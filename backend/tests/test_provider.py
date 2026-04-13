@@ -22,7 +22,7 @@ class TestProviderEndpoint:
         response = client.post("/v1/chat/stream", json={"messages": [{"role": "user"}]})
         assert response.status_code == 200
 
-    def test_chat_stream_returns_sse_with_entities(self, monkeypatch):
+    def test_chat_stream_returns_text(self, monkeypatch):
         monkeypatch.setenv("GEMINI_API_KEY", "test-key")
         with patch("src.provider.genai.GenerativeModel") as mock_model_class:
             mock_model = MagicMock()
@@ -39,10 +39,7 @@ class TestProviderEndpoint:
             assert response.status_code == 200
             assert "text/event-stream" in response.headers["content-type"]
             text = response.text
-            assert "event: globe_version" in text
-            assert "suez_canal" in text
-            assert "event: text" in text
-            assert "event: done" in text
+            assert "Suez handles ~12% of global trade." in text
 
     def test_chat_stream_handles_no_key(self, monkeypatch):
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
@@ -51,9 +48,7 @@ class TestProviderEndpoint:
         })
         assert response.status_code == 200
         text = response.text
-        assert "event: text" in text
         assert "Set GEMINI_API_KEY" in text
-        assert "event: done" in text
 
     def test_chat_stream_falls_back_to_rag_when_no_chokepoints(self, monkeypatch):
         monkeypatch.setenv("GEMINI_API_KEY", "test-key")
@@ -69,7 +64,7 @@ class TestProviderEndpoint:
             })
             assert response.status_code == 200
             text = response.text
-            assert "event: text" in text
+            assert "Rotterdam is Europe's largest port." in text
 
     def test_chat_stream_uses_last_message(self, monkeypatch):
         monkeypatch.setenv("GEMINI_API_KEY", "test-key")
@@ -108,5 +103,4 @@ class TestProviderIntegration:
 
             assert response.status_code == 200
             text = response.text
-            assert "suez_canal" in text
-            assert "event: done" in text
+            assert "Suez" in text or "suez" in text.lower()

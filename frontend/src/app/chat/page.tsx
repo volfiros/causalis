@@ -106,7 +106,7 @@ function GlobeSidebar({
 }
 
 function ChatContent() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
     api: "/api/chat/stream",
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -293,6 +293,29 @@ function ChatContent() {
                           />
                         ))}
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="flex justify-start">
+                    <div
+                      className="px-5 py-3"
+                      style={{
+                        backgroundColor: "rgba(239, 68, 68, 0.1)",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        borderRadius: "12px 12px 12px 4px",
+                      }}
+                    >
+                      <p
+                        className="text-sm"
+                        style={{
+                          fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                          color: "rgba(239, 68, 68, 0.9)",
+                        }}
+                      >
+                        {error.message || "Something went wrong. Please try again."}
+                      </p>
                     </div>
                   </div>
                 )}
