@@ -3,7 +3,9 @@ export const maxDuration = 30;
 export async function POST(req: Request) {
   const { messages } = await req.json();
 
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'}/v1/chat/stream`, {
+  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
+  const response = await fetch(`${backendUrl}/v1/chat/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

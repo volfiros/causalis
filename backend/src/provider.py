@@ -1,8 +1,10 @@
 import json
 import os
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from dotenv import load_dotenv
 import google.generativeai as genai
 
 from src.world_model import MaritimeWorldModel
@@ -11,6 +13,8 @@ from src.simulator import DisruptionSimulator
 from src.entity_extractor import extract_entities
 from src.prompt_builder import build_prompt
 from src.rag import MaritimeKnowledgeBase
+
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 app = FastAPI(title="Causalis Streaming Provider")
 
@@ -55,12 +59,24 @@ async def chat_stream(request: ChatRequest):
     rag_results = kb.retrieve(user_message, n_results=3)
     rag_context = "\n\n".join(r["content"] for r in rag_results) if rag_results else ""
 
+    all_entities = chokepoints + ports
+
     if simulation:
-        prompt = build_prompt(user_message, simulation, rag_context)
+        prompt = build_prompt(user_message, simulation, rag_context, all_entities)
     else:
+        entity_instruction = (
+            f"Relevant spatial entities: {all_entities}\n"
+            if all_entities
+            else "Relevant spatial entities: []\n"
+        )
         prompt = (
             f"User Question: {user_message}\n\n"
             f"Reference Material:\n{rag_context}\n\n"
+            "Use OpenUI Lang when presenting structured data. Available components:\n"
+            "- TextBlock(text: str)\n"
+            "- GlobeVersion(version: int, entities: list[str])\n\n"
+            f"{entity_instruction}\n"
+            "When discussing spatial entities, render GlobeVersion(version=1, entities=<relevant ids>). "
             "Answer based on the reference material. If no relevant material is available, "
             "explain that you need a specific chokepoint to simulate disruptions."
         )
