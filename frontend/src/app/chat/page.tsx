@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Send, Globe } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Renderer } from "@openuidev/react-lang";
 import SideGlobe from "@/components/SideGlobe";
 import { library } from "@/lib/openui-library";
@@ -126,34 +127,27 @@ function GlobeSidebar({
     setEntityInfos(infos);
   }, [globeState]);
 
-  if (!isOpen || globeState === null) return null;
-
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: 0,
-        right: 0,
-        width: "320px",
-        height: "100%",
-        backgroundColor: "rgba(0, 0, 0, 0.95)",
-        borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
-        zIndex: 20,
-        padding: "24px",
-        overflow: "auto",
-        animation: "slideIn 300ms ease forwards",
-      }}
-    >
-      <style jsx>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100%);
-          }
-          to {
-            transform: translateX(0);
-          }
-        }
-      `}</style>
+    <AnimatePresence>
+      {isOpen && globeState !== null && (
+        <motion.div
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: "320px",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.95)",
+            borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+            zIndex: 20,
+            padding: "24px",
+            overflow: "auto",
+          }}
+        >
       <div
         style={{
           display: "flex",
@@ -261,7 +255,9 @@ function GlobeSidebar({
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
