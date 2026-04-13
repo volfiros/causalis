@@ -1,5 +1,3 @@
-import json
-
 from src.simulator import SimulationResult
 
 

@@ -82,6 +82,13 @@ class TestComputeRerouting:
         rerouting = simulator._compute_rerouting(affected, {"suez_canal"}, "full")
         for alt in rerouting["alternatives"]:
             assert alt["vessels_affected"] >= 0
+            assert isinstance(alt["vessels_affected"], int)
+
+    def test_rerouting_vessels_affected_is_int(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        rerouting = simulator._compute_rerouting(affected, {"suez_canal"}, "full")
+        for alt in rerouting["alternatives"]:
+            assert isinstance(alt["vessels_affected"], int), f"Expected int, got {type(alt['vessels_affected'])}"
 
 
 class TestScoreCarriers:

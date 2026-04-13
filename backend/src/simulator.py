@@ -1,7 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Any, Optional
-
-import pandas as pd
+from dataclasses import dataclass
+from typing import Optional
 
 from src.data_loader import load_carriers, load_vessels
 from src.temporal_model import TemporalModel
@@ -111,7 +109,7 @@ class DisruptionSimulator:
                 continue
             additional_days = alt_route["transit_days"] - route["transit_days"]
             additional_cost = additional_days * DAILY_VESSEL_COST_USD
-            vessels_affected = self._count_vessels_on_route(route["id"]) * multiplier
+            vessels_affected = int(self._count_vessels_on_route(route["id"]) * multiplier)
             alternatives.append({
                 "route_id": alt_route["id"],
                 "original_route_id": route["id"],
@@ -142,7 +140,6 @@ class DisruptionSimulator:
         if not affected_route_ids:
             return []
         multiplier = SEVERITY_MULTIPLIERS[severity]
-        blocked_set = set(chokepoint_ids)
         results = []
         for carrier_id, carrier in self._carrier_data.items():
             routes_exposed = sum(1 for rid in carrier["typical_routes"] if rid in affected_route_ids)

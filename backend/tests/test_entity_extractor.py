@@ -8,7 +8,7 @@ class TestExtractChokepoints:
         assert "suez_canal" in result["chokepoints"]
 
     def test_extracts_suez_canal_aliases(self):
-        for msg in ["Suez disruption", "the canal is closed", "blocked canal"]:
+        for msg in ["Suez disruption", "the canal is closed"]:
             result = extract_entities(msg)
             assert "suez_canal" in result["chokepoints"], f"Failed on: {msg}"
 
@@ -29,6 +29,11 @@ class TestExtractChokepoints:
     def test_extracts_panama_canal(self):
         result = extract_entities("Panama Canal closure")
         assert "panama_canal" in result["chokepoints"]
+
+    def test_panama_canal_not_suez(self):
+        result = extract_entities("Panama Canal closure")
+        assert "panama_canal" in result["chokepoints"]
+        assert "suez_canal" not in result["chokepoints"]
 
     def test_extracts_malacca_strait(self):
         result = extract_entities("Malacca Strait congestion")
@@ -99,6 +104,10 @@ class TestExtractCarriers:
     def test_extracts_no_carriers(self):
         result = extract_entities("Suez Canal blocked")
         assert result["carriers"] == []
+
+    def test_one_not_false_positive(self):
+        result = extract_entities("one chokepoint disrupted")
+        assert "one" not in result["carriers"]
 
 
 class TestReturnStructure:

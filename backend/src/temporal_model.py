@@ -1,5 +1,3 @@
-import pandas as pd
-
 from src.data_loader import load_carriers
 from src.world_model import MaritimeWorldModel
 
