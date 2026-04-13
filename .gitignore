@@ -1,0 +1,97 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+.envrc
+*.env
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Testing
+__pycache__/
+*.py[cod]
+*$py.class
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.nyc_output/
+.stryker-tmp/
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Frontend build
+.next/
+out/
+.cache/
+*.tsbuildinfo
+
+# Data (may contain sensitive or large files)
+data/raw/
+*.csv
+*.parquet
+*.db
+*.sqlite
+
+# Vercel
+.vercel
+
+# ChromaDB (local vector store)
+chroma/
+
+# Agent / AI tooling
+.pi/
+.agents/
+.skills/
+.plans/
+*.session
+*.session.jsonl
+sessions/
+todo/
+
+# Specs and documentation
+*.spec.md
+SPEC.md
+specs/
+docs/
+
+# Personal / local development
+*.local
+.local/
+tmp/
+temp/
