@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"id": "strait_of_hormuz", "name": "Strait of Hormuz", "daily_vessels": 140, "type": "oil_gas", "strategic_importance": 10},
+      "geometry": {"type": "Polygon", "coordinates": [[[55.5, 26.2], [57.0, 26.2], [57.0, 27.0], [55.5, 27.0], [55.5, 26.2]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"id": "strait_of_malacca", "name": "Strait of Malacca", "daily_vessels": 180, "type": "mixed", "strategic_importance": 9},
+      "geometry": {"type": "Polygon", "coordinates": [[[100.0, 1.0], [104.5, 1.0], [104.5, 4.0], [100.0, 4.0], [100.0, 1.0]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"id": "suez_canal", "name": "Suez Canal", "daily_vessels": 50, "type": "mixed", "strategic_importance": 10},
+      "geometry": {"type": "Polygon", "coordinates": [[[32.3, 29.9], [32.6, 29.9], [32.6, 31.3], [32.3, 31.3], [32.3, 29.9]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"id": "panama_canal", "name": "Panama Canal", "daily_vessels": 35, "type": "mixed", "strategic_importance": 9},
+      "geometry": {"type": "Polygon", "coordinates": [[[-80.0, 8.9], [-79.5, 8.9], [-79.5, 9.4], [-80.0, 9.4], [-80.0, 8.9]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"id": "bab_el_mandeb", "name": "Bab el-Mandeb", "daily_vessels": 60, "type": "mixed", "strategic_importance": 9},
+      "geometry": {"type": "Polygon", "coordinates": [[[42.5, 12.3], [44.5, 12.3], [44.5, 14.5], [42.5, 14.5], [42.5, 12.3]]]}
+    },
+    {
+      "type": "Feature",
+      "properties": {"id": "bosporus", "name": "Turkish Straits (Bosporus)", "daily_vessels": 140, "type": "mixed", "strategic_importance": 7},
+      "geometry": {"type": "Polygon", "coordinates": [[[28.9, 41.0], [29.1, 41.0], [29.1, 41.5], [28.9, 41.5], [28.9, 41.0]]]}
+    }
+  ]
+}
