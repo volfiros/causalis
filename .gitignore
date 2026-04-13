@@ -95,3 +95,6 @@ docs/
 .local/
 tmp/
 temp/
+
+# Backend
+backend/venv/

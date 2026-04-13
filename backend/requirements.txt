@@ -1,0 +1,6 @@
+geopandas==0.14.3
+shapely==2.0.4
+networkx==3.2.1
+pandas==2.1.4
+python-dotenv==1.0.1
+pytest==8.1.1
