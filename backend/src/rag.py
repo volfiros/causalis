@@ -74,6 +74,16 @@ class MaritimeKnowledgeBase:
         except FileNotFoundError:
             pass
 
+        try:
+            with open(DATA_DIR / "routes.json") as f:
+                for r in _json.load(f):
+                    doc_id = "route_" + r["id"]
+                    docs.append(f"[ID:{doc_id}] {_json.dumps(r)}")
+                    ids.append(doc_id)
+                    metadatas.append({"type": "route", "name": r["name"]})
+        except FileNotFoundError:
+            pass
+
         if docs:
             self.collection.add(documents=docs, ids=ids, metadatas=metadatas)
 
