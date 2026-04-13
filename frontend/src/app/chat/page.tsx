@@ -3,7 +3,8 @@
 import { useRef, useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
-import { Send, Globe } from "lucide-react";
+import { Send, Globe, ChevronDown, ChevronUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Renderer } from "@openuidev/react-lang";
 import SideGlobe from "@/components/SideGlobe";
 import { library } from "@/lib/openui-library";
@@ -106,15 +107,249 @@ function getMessageText(message: { parts?: Array<{ type: string; text?: string }
     .join("");
 }
 
+function FloatingChatPanel({
+  messages,
+  input,
+  setInput,
+  isLoading,
+  error,
+  onSubmit,
+  isExpanded,
+  setIsExpanded,
+}: {
+  messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>;
+  input: string;
+  setInput: (s: string) => void;
+  isLoading: boolean;
+  error: Error | null;
+  onSubmit: (e: React.FormEvent) => void;
+  isExpanded: boolean;
+  setIsExpanded: (v: boolean) => void;
+}) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  return (
+    <motion.div
+      initial={{ x: -400, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -400, opacity: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "400px",
+        height: "100vh",
+        backgroundColor: "rgba(0, 0, 0, 0.6)",
+        backdropFilter: "blur(12px)",
+        zIndex: 25,
+        display: "flex",
+        flexDirection: "column",
+        borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "16px 20px",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: "11px",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "rgba(255, 255, 255, 0.5)",
+          }}
+        >
+          Conversation
+        </span>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "rgba(255, 255, 255, 0.5)",
+            cursor: "pointer",
+            padding: "4px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {isExpanded ? (
+            <ChevronDown className="w-4 h-4" />
+          ) : (
+            <ChevronUp className="w-4 h-4" />
+          )}
+        </button>
+      </div>
+
+      <AnimatePresence>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              flex: 1,
+              overflow: "auto",
+              padding: "16px 20px",
+            }}
+          >
+            <div className="space-y-4">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className="max-w-[90%] px-4 py-2"
+                    style={
+                      msg.role === "user"
+                        ? {
+                            backgroundColor: "rgba(255, 255, 255, 0.9)",
+                            color: "#000000",
+                            borderRadius: "12px 12px 4px 12px",
+                          }
+                        : {
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                            border: "1px solid rgba(255, 255, 255, 0.1)",
+                            borderRadius: "12px 12px 12px 4px",
+                          }
+                    }
+                  >
+                    <p
+                      className="text-sm"
+                      style={{
+                        fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                      }}
+                    >
+                      {getMessageText(msg)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div
+                    className="px-4 py-3"
+                    style={{
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      borderRadius: "12px 12px 12px 4px",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {[0, 150, 300].map((delay) => (
+                        <div
+                          key={delay}
+                          className="w-1.5 h-1.5 rounded-full animate-bounce"
+                          style={{
+                            backgroundColor: "#22d3ee",
+                            animationDelay: `${delay}ms`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="flex justify-start">
+                  <div
+                    className="px-4 py-2"
+                    style={{
+                      backgroundColor: "rgba(239, 68, 68, 0.1)",
+                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                      borderRadius: "12px 12px 12px 4px",
+                    }}
+                  >
+                    <p
+                      className="text-sm"
+                      style={{
+                        fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                        color: "rgba(239, 68, 68, 0.9)",
+                      }}
+                    >
+                      {error.message || "Something went wrong."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div
+        style={{
+          padding: "16px 20px",
+          borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+        }}
+      >
+        <form onSubmit={onSubmit}>
+          <div
+            className="flex items-center gap-2 px-4 py-3"
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.05)",
+              border: "1px solid rgba(255, 255, 255, 0.1)",
+              borderRadius: "8px",
+            }}
+          >
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about shipping..."
+              disabled={isLoading}
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-500"
+              style={{
+                fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                color: "#ffffff",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || isLoading}
+              className="p-2"
+              style={{
+                backgroundColor: input.trim() && !isLoading ? "#22d3ee" : "transparent",
+                color: input.trim() && !isLoading ? "#000000" : "#71717a",
+                borderRadius: "6px",
+              }}
+            >
+              <Send className="w-4 h-4" strokeWidth={2} />
+            </button>
+          </div>
+        </form>
+      </div>
+    </motion.div>
+  );
+}
+
 function ChatContent() {
   const { messages, sendMessage, status, error } = useChat({
     transport: new TextStreamChatTransport({ api: "/api/chat/stream" }),
   });
   const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [globeState, setGlobeState] = useState<GlobeEventPayload | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isChatExpanded, setIsChatExpanded] = useState(true);
   const [dataInitialized, setDataInitialized] = useState(false);
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
   const [entityInfos, setEntityInfos] = useState<EntityInfo[]>([]);
@@ -124,6 +359,16 @@ function ChatContent() {
   const [highlightedRouteIds, setHighlightedRouteIds] = useState<string[]>([]);
   const clientVersionRef = useRef(0);
   const previousEntitiesRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
 
   useEffect(() => {
     fetchSpatialData()
@@ -216,7 +461,7 @@ function ChatContent() {
     inputRef.current?.focus();
   };
 
-  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
@@ -236,6 +481,7 @@ function ChatContent() {
 
   const highlightedEntities = globeState?.entities ?? [];
   const currentVersion = globeState?.version ?? 0;
+  const dpr = isFullscreen ? 1.5 : 1;
 
   return (
     <>
@@ -244,6 +490,7 @@ function ChatContent() {
         highlightedRouteIds={highlightedRouteIds}
         selectedPinId={selectedPinId}
         onPinClick={setSelectedPinId}
+        dpr={dpr}
       />
 
       <GlobeNavButton
@@ -263,7 +510,24 @@ function ChatContent() {
         chokepoints={chokepoints}
         routes={routes}
         onClearFilters={handleClearFilters}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
       />
+
+      <AnimatePresence>
+        {isFullscreen && (
+          <FloatingChatPanel
+            messages={messages}
+            input={input}
+            setInput={setInput}
+            isLoading={isLoading}
+            error={error}
+            onSubmit={handleFormSubmit}
+            isExpanded={isChatExpanded}
+            setIsExpanded={setIsChatExpanded}
+          />
+        )}
+      </AnimatePresence>
 
       <div className="absolute inset-0 pointer-events-none">
         <div
@@ -275,7 +539,8 @@ function ChatContent() {
         />
       </div>
 
-      <div className="relative z-10 flex flex-col h-full">
+      {!isFullscreen && (
+        <div className="relative z-10 flex flex-col h-full">
         <header
           className="px-12 lg:px-20 py-5 flex items-center justify-between"
           style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}
@@ -494,7 +759,7 @@ function ChatContent() {
             </div>
           </form>
         </div>
-      </div>
+      )}
     </>
   );
 }

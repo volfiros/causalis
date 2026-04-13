@@ -7,6 +7,7 @@ import { VersionPanel } from "./VersionPanel";
 import { Menus } from "./Menus";
 import { PinDetails } from "./PinDetails";
 import { FilterControls } from "./FilterControls";
+import { FullscreenToggle } from "./FullscreenToggle";
 
 export interface EntityInfo {
   id: string;
@@ -26,6 +27,8 @@ interface GlobeSidebarProps {
   routes: SpatialRoute[];
   onFilterChange?: (filters: { routeIds: string[] }) => void;
   onClearFilters?: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
 export function GlobeSidebar({
@@ -40,6 +43,8 @@ export function GlobeSidebar({
   routes,
   onFilterChange,
   onClearFilters,
+  isFullscreen = false,
+  onToggleFullscreen,
 }: GlobeSidebarProps) {
   const selectedPort = selectedEntityId ? ports.find(p => p.id === selectedEntityId) : null;
   const selectedChokepoint = selectedEntityId ? chokepoints.find(cp => cp.id === selectedEntityId) : null;
@@ -85,19 +90,24 @@ export function GlobeSidebar({
             >
               Globe View
             </h3>
-            <button
-              onClick={onClose}
-              style={{
-                background: "none",
-                border: "none",
-                color: "rgba(255, 255, 255, 0.5)",
-                cursor: "pointer",
-                fontSize: "18px",
-                padding: "4px",
-              }}
-            >
-              ×
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {onToggleFullscreen && (
+                <FullscreenToggle isFullscreen={isFullscreen} onToggle={onToggleFullscreen} />
+              )}
+              <button
+                onClick={onClose}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "rgba(255, 255, 255, 0.5)",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                  padding: "4px",
+                }}
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           <VersionPanel version={globeState.version} />

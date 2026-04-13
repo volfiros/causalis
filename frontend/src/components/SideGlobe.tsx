@@ -398,6 +398,7 @@ export interface SideGlobeProps {
   autoRotate?: boolean;
   onPinClick?: (pinId: string) => void;
   selectedPinId?: string | null;
+  dpr?: number;
 }
 
 export default function SideGlobe({
@@ -406,6 +407,7 @@ export default function SideGlobe({
   autoRotate = false,
   onPinClick,
   selectedPinId,
+  dpr = 1,
 }: SideGlobeProps) {
   const [countries, setCountries] = useState<GeoFeature[]>([]);
   const [ports, setPorts] = useState<SpatialPort[]>([]);
@@ -440,7 +442,7 @@ export default function SideGlobe({
     <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)", pointerEvents: "auto" }}>
       <Canvas
         camera={{ position: [-1.75, 0, 10.5], fov: 45 }}
-        dpr={1}
+        dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         style={{ background: "transparent" }}
       >
