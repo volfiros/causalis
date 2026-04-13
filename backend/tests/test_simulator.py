@@ -84,6 +84,82 @@ class TestComputeRerouting:
             assert alt["vessels_affected"] >= 0
 
 
+class TestScoreCarriers:
+    def test_suez_maersk_high_exposure(self, simulator):
+        result = simulator._score_carriers({"asia_europe_suez"}, ["suez_canal"], "full")
+        names = [c["carrier_id"] for c in result]
+        assert "maersk" in names
+        maersk = next(c for c in result if c["carrier_id"] == "maersk")
+        assert maersk["exposure_score"] > 0.5
+
+    def test_suez_all_carriers_scored(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        affected_ids = {r["id"] for r in affected}
+        result = simulator._score_carriers(affected_ids, ["suez_canal"], "full")
+        assert len(result) > 0
+        assert len(result) <= 10
+
+    def test_carriers_sorted_by_exposure(self, simulator):
+        result = simulator._score_carriers({"asia_europe_suez", "europe_me"}, ["suez_canal"], "full")
+        scores = [c["exposure_score"] for c in result]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_carrier_routes_exposed_count(self, simulator):
+        result = simulator._score_carriers({"asia_europe_suez"}, ["suez_canal"], "full")
+        maersk = next((c for c in result if c["carrier_id"] == "maersk"), None)
+        assert maersk is not None
+        assert maersk["routes_exposed"] == 1
+
+    def test_carrier_daily_risk_positive(self, simulator):
+        result = simulator._score_carriers({"asia_europe_suez"}, ["suez_canal"], "full")
+        for c in result:
+            if c["routes_exposed"] > 0:
+                assert c["estimated_daily_risk_usd"] > 0
+
+    def test_no_carriers_for_empty_routes(self, simulator):
+        result = simulator._score_carriers(set(), ["suez_canal"], "full")
+        assert result == []
+
+
+class TestForecastPortCongestion:
+    def test_suez_fujairah_congestion_rises(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        result = simulator._forecast_port_congestion(affected, ["suez_canal"], "full")
+        port_ids = {p["port_id"] for p in result}
+        assert "fujairah" in port_ids
+        fujairah = next(p for p in result if p["port_id"] == "fujairah")
+        assert fujairah["forecast_congestion"] > fujairah["baseline_congestion"]
+
+    def test_congestion_never_exceeds_95pct(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        result = simulator._forecast_port_congestion(affected, ["suez_canal"], "full")
+        for p in result:
+            assert p["forecast_congestion"] <= 0.95
+
+    def test_congestion_increase_proportional_to_severity(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        full_result = simulator._forecast_port_congestion(affected, ["suez_canal"], "full")
+        partial_result = simulator._forecast_port_congestion(affected, ["suez_canal"], "partial")
+        full_max = max(p["forecast_congestion"] for p in full_result)
+        partial_max = max(p["forecast_congestion"] for p in partial_result)
+        assert full_max >= partial_max
+
+    def test_port_congestion_has_required_fields(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        result = simulator._forecast_port_congestion(affected, ["suez_canal"], "full")
+        for p in result:
+            assert "port_id" in p
+            assert "baseline_congestion" in p
+            assert "forecast_congestion" in p
+            assert "dwell_increase_hours" in p
+
+    def test_dwell_increase_non_negative(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        result = simulator._forecast_port_congestion(affected, ["suez_canal"], "full")
+        for p in result:
+            assert p["dwell_increase_hours"] >= 0
+
+
 class TestRunScenario:
     def test_returns_simulation_result(self, simulator):
         result = simulator.run_scenario(["suez_canal"], "full")
