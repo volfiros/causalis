@@ -1,0 +1,107 @@
+[
+  {
+    "id": "suez_ever_given_2021",
+    "type": "disruption_event",
+    "chokepoint": "suez_canal",
+    "date": "2021-03-23",
+    "duration_days": 6,
+    "vessels_affected": 369,
+    "daily_trade_impact_usd": 9600000000,
+    "description": "Ever Given ran aground and fully blocked the Suez Canal, halting two-way transit and creating a large vessel backlog that rippled through Europe and Asia trade lanes.",
+    "rerouting_outcomes": {
+      "cape_of_good_hope_vessels": 61,
+      "additional_days": 10,
+      "additional_cost_per_vessel_usd": 700000
+    }
+  },
+  {
+    "id": "red_sea_houthi_2023_2024",
+    "type": "disruption_event",
+    "chokepoint": "bab_el_mandeb",
+    "date": "2023-11-19",
+    "duration_days": 180,
+    "vessels_affected": 2500,
+    "daily_trade_impact_usd": 3000000000,
+    "description": "Missile and drone attacks on commercial shipping in the Red Sea and Bab el-Mandeb caused major liners to suspend Suez transits and reroute around the Cape of Good Hope.",
+    "rerouting_outcomes": {
+      "cape_of_good_hope_vessels": 2000,
+      "additional_days": 14,
+      "additional_cost_per_vessel_usd": 1000000
+    }
+  },
+  {
+    "id": "panama_drought_2023_2024",
+    "type": "disruption_event",
+    "chokepoint": "panama_canal",
+    "date": "2023-07-01",
+    "duration_days": 300,
+    "vessels_affected": 1200,
+    "daily_trade_impact_usd": 1500000000,
+    "description": "Low water levels in Gatun Lake forced the Panama Canal Authority to cut daily transit slots and impose draft restrictions, reducing canal capacity for months.",
+    "rerouting_outcomes": {
+      "cape_horn_vessels": 150,
+      "additional_days": 12,
+      "additional_cost_per_vessel_usd": 800000
+    }
+  },
+  {
+    "id": "covid_port_congestion_2020_2021",
+    "type": "disruption_event",
+    "chokepoint": "global_network",
+    "date": "2020-09-01",
+    "duration_days": 420,
+    "vessels_affected": 5000,
+    "daily_trade_impact_usd": 5000000000,
+    "description": "Pandemic-era demand surges, labor shortages, quarantine rules, and inland logistics bottlenecks triggered sustained global port congestion, long queues, and schedule unreliability.",
+    "rerouting_outcomes": {
+      "off_window_arrivals": 3200,
+      "additional_days": 7,
+      "additional_cost_per_vessel_usd": 250000
+    }
+  },
+  {
+    "id": "turkish_straits_congestion_2022",
+    "type": "disruption_event",
+    "chokepoint": "bosporus",
+    "date": "2022-12-01",
+    "duration_days": 45,
+    "vessels_affected": 650,
+    "daily_trade_impact_usd": 450000000,
+    "description": "Insurance verification checks and administrative controls created long vessel queues through the Turkish Straits, slowing crude and product tanker movements in and out of the Black Sea.",
+    "rerouting_outcomes": {
+      "anchorage_waiting_vessels": 180,
+      "additional_days": 4,
+      "additional_cost_per_vessel_usd": 120000
+    }
+  },
+  {
+    "id": "english_channel_congestion_2020",
+    "type": "disruption_event",
+    "chokepoint": "english_channel",
+    "date": "2020-12-21",
+    "duration_days": 7,
+    "vessels_affected": 420,
+    "daily_trade_impact_usd": 350000000,
+    "description": "Border disruption, weather, and downstream port delays created congestion in the English Channel and Dover approaches, delaying ferries, feeders, and short-sea shipping.",
+    "rerouting_outcomes": {
+      "alternative_north_sea_calls": 90,
+      "additional_days": 2,
+      "additional_cost_per_vessel_usd": 85000
+    }
+  },
+  {
+    "id": "cape_of_good_hope_routing_shift_2024",
+    "type": "disruption_event",
+    "chokepoint": "cape_of_good_hope",
+    "date": "2024-01-15",
+    "duration_days": 120,
+    "vessels_affected": 1700,
+    "daily_trade_impact_usd": 2200000000,
+    "description": "Large-scale diversion of Asia-Europe traffic around the Cape of Good Hope lengthened voyage cycles, tightened vessel supply, and shifted congestion toward African bunkering and relay ports.",
+    "rerouting_outcomes": {
+      "rerouted_vessels": 1700,
+      "additional_days": 13,
+      "additional_cost_per_vessel_usd": 950000
+    }
+  }
+]
