@@ -75,3 +75,68 @@ def test_chokepoints_ids_are_unique():
         data = json.load(f)
     ids = [f["properties"]["id"] for f in data["features"]]
     assert len(ids) == len(set(ids)), f"Duplicate chokepoint IDs"
+
+
+def test_vessels_json_exists():
+    assert (DATA_DIR / "vessels.json").exists(), "vessels.json not found"
+
+
+def test_vessels_json_valid():
+    with open(DATA_DIR / "vessels.json") as f:
+        data = json.load(f)
+    assert isinstance(data, list)
+    assert len(data) >= 40
+    required = {"mmsi", "name", "carrier_id", "type", "latitude", "longitude", "speed_knots", "heading"}
+    for v in data:
+        missing = required - set(v.keys())
+        assert not missing, f"Vessel {v.get('mmsi', '?')} missing: {missing}"
+
+
+def test_carriers_json_exists():
+    assert (DATA_DIR / "carriers.json").exists(), "carriers.json not found"
+
+
+def test_carriers_json_valid():
+    with open(DATA_DIR / "carriers.json") as f:
+        data = json.load(f)
+    assert isinstance(data, list)
+    assert len(data) >= 8
+    required = {"id", "name", "country", "vessel_count", "typical_routes", "chokepoint_exposure"}
+    for c in data:
+        missing = required - set(c.keys())
+        assert not missing, f"Carrier {c.get('id', '?')} missing: {missing}"
+
+
+def test_routes_json_exists():
+    assert (DATA_DIR / "routes.json").exists(), "routes.json not found"
+
+
+def test_routes_json_valid():
+    with open(DATA_DIR / "routes.json") as f:
+        data = json.load(f)
+    assert isinstance(data, list)
+    assert len(data) >= 15
+    required = {"id", "name", "origin_port_id", "destination_port_id", "distance_nm", "transit_days", "chokepoints_transited"}
+    for r in data:
+        missing = required - set(r.keys())
+        assert not missing, f"Route {r.get('id', '?')} missing: {missing}"
+
+
+def test_route_port_ids_reference_real_ports():
+    with open(DATA_DIR / "ports.json") as f:
+        port_ids = {p["id"] for p in json.load(f)}
+    with open(DATA_DIR / "routes.json") as f:
+        routes = json.load(f)
+    for r in routes:
+        assert r["origin_port_id"] in port_ids, f"Route {r['id']}: unknown origin {r['origin_port_id']}"
+        assert r["destination_port_id"] in port_ids, f"Route {r['id']}: unknown destination {r['destination_port_id']}"
+
+
+def test_route_chokepoint_ids_reference_real_chokepoints():
+    with open(DATA_DIR / "chokepoints.geojson") as f:
+        cp_ids = {feat["properties"]["id"] for feat in json.load(f)["features"]}
+    with open(DATA_DIR / "routes.json") as f:
+        routes = json.load(f)
+    for r in routes:
+        for cp in r["chokepoints_transited"]:
+            assert cp in cp_ids, f"Route {r['id']}: unknown chokepoint {cp}"

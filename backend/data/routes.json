@@ -1,0 +1,22 @@
+[
+  {"id": "asia_europe_suez", "name": "Asia-Europe (via Suez)", "origin_port_id": "shanghai", "destination_port_id": "rotterdam", "distance_nm": 10500, "transit_days": 28, "chokepoints_transited": ["strait_of_malacca", "suez_canal"]},
+  {"id": "asia_europe_cape", "name": "Asia-Europe (via Cape of Good Hope)", "origin_port_id": "shanghai", "destination_port_id": "rotterdam", "distance_nm": 13500, "transit_days": 36, "chokepoints_transited": ["strait_of_malacca"]},
+  {"id": "transpacific_east", "name": "Transpacific Eastbound", "origin_port_id": "shanghai", "destination_port_id": "los_angeles", "distance_nm": 5600, "transit_days": 14, "chokepoints_transited": []},
+  {"id": "transatlantic_east", "name": "Transatlantic Eastbound", "origin_port_id": "new_york", "destination_port_id": "rotterdam", "distance_nm": 3600, "transit_days": 10, "chokepoints_transited": []},
+  {"id": "europe_me", "name": "Europe-Middle East", "origin_port_id": "rotterdam", "destination_port_id": "dubai", "distance_nm": 5500, "transit_days": 16, "chokepoints_transited": ["suez_canal", "bab_el_mandeb"]},
+  {"id": "asia_me_suez", "name": "Asia-Middle East (via Suez)", "origin_port_id": "singapore", "destination_port_id": "dubai", "distance_nm": 4300, "transit_days": 12, "chokepoints_transited": ["strait_of_malacca", "bab_el_mandeb"]},
+  {"id": "europe_west_africa", "name": "Europe-West Africa", "origin_port_id": "rotterdam", "destination_port_id": "djibouti", "distance_nm": 3200, "transit_days": 9, "chokepoints_transited": []},
+  {"id": "intra_asia", "name": "Intra-Asia (Singapore-Shenzhen)", "origin_port_id": "singapore", "destination_port_id": "shenzhen", "distance_nm": 1600, "transit_days": 4, "chokepoints_transited": ["strait_of_malacca"]},
+  {"id": "us_ec_gulf_me", "name": "US East Coast-Gulf-Middle East", "origin_port_id": "new_york", "destination_port_id": "dubai", "distance_nm": 7800, "transit_days": 22, "chokepoints_transited": ["suez_canal"]},
+  {"id": "europe_mediterranean", "name": "Europe-Mediterranean", "origin_port_id": "rotterdam", "destination_port_id": "piraeus", "distance_nm": 2100, "transit_days": 6, "chokepoints_transited": []},
+  {"id": "med_black_sea", "name": "Mediterranean-Black Sea", "origin_port_id": "piraeus", "destination_port_id": "istanbul", "distance_nm": 650, "transit_days": 2, "chokepoints_transited": ["bosporus"]},
+  {"id": "me_india", "name": "Middle East-India", "origin_port_id": "dubai", "destination_port_id": "mumbai", "distance_nm": 1200, "transit_days": 3, "chokepoints_transited": ["strait_of_hormuz"]},
+  {"id": "me_europe_hormuz", "name": "Middle East-Europe (via Hormuz+Suez)", "origin_port_id": "dubai", "destination_port_id": "rotterdam", "distance_nm": 6500, "transit_days": 18, "chokepoints_transited": ["strait_of_hormuz", "bab_el_mandeb", "suez_canal"]},
+  {"id": "asia_me_hormuz", "name": "Asia-Middle East (via Hormuz)", "origin_port_id": "singapore", "destination_port_id": "fujairah", "distance_nm": 3800, "transit_days": 11, "chokepoints_transited": ["strait_of_malacca", "strait_of_hormuz"]},
+  {"id": "panama_atlantic_pacific", "name": "Panama Atlantic-Pacific", "origin_port_id": "colon", "destination_port_id": "los_angeles", "distance_nm": 3100, "transit_days": 8, "chokepoints_transited": ["panama_canal"]},
+  {"id": "us_ec_panama_asia", "name": "US East Coast-Asia (via Panama)", "origin_port_id": "new_york", "destination_port_id": "shanghai", "distance_nm": 10500, "transit_days": 26, "chokepoints_transited": ["panama_canal"]},
+  {"id": "europe_hormuz_direct", "name": "Europe-Hormuz Direct", "origin_port_id": "rotterdam", "destination_port_id": "fujairah", "distance_nm": 6000, "transit_days": 17, "chokepoints_transited": ["suez_canal", "strait_of_hormuz"]},
+  {"id": "asia_africa_cape", "name": "Asia-South Africa (Cape)", "origin_port_id": "singapore", "destination_port_id": "salalah", "distance_nm": 5800, "transit_days": 16, "chokepoints_transited": ["strait_of_malacca"]},
+  {"id": "intra_gulf", "name": "Intra-Gulf (Dubai-Fujairah)", "origin_port_id": "dubai", "destination_port_id": "fujairah", "distance_nm": 150, "transit_days": 1, "chokepoints_transited": ["strait_of_hormuz"]},
+  {"id": "asia_australia", "name": "Asia-Australia", "origin_port_id": "singapore", "destination_port_id": "sydney", "distance_nm": 3800, "transit_days": 10, "chokepoints_transited": []}
+]
