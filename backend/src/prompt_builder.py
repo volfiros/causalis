@@ -66,13 +66,27 @@ def build_prompt(user_message: str, simulation: SimulationResult, rag_context: s
 ### Cascade Impact Timeline
 {timeline_text}
 
-{rag_section}## Output Format
-Provide your analysis as a causal chain with these bullet points:
-→ Vessel rerouting impact (how many vessels, where they go)
-→ Transit time changes (additional days, affected routes)
-→ Port congestion forecast (which ports, how much congestion increases)
-→ Carrier exposure (most exposed carriers, financial risk)
-→ Timeline (when impacts reach key ports)
+{rag_section}## OpenUI Component Syntax
+Use OpenUI Lang to structure your response when displaying data. Wrap data visualizations in component syntax:
+
+root = Stack([
+  ImpactStats(vessels={sim_dict['scenario']['affected_vessels']}, routes=47, cost_usd=2_400_000),
+  CarrierTable(carriers=[{{'name': 'MSC', 'exposure': 0.92}}, {{'name': 'Maersk', 'exposure': 0.87}}]),
+  GlobeVersion(version=1)
+])
+
+Available components:
+- ImpactStats(vessels: int, routes: int, cost_usd: int) - High-level metrics grid
+- CarrierTable(carriers: list[dict]) - Carrier exposure ranking with name and exposure score
+- ReroutingCard(route_id: str, additional_days: int, additional_cost_usd: int, vessels_affected: int) - Route alternative info
+- PortCongestion(port_id: str, baseline: float, forecast: float, dwell_increase_hours: float) - Port congestion forecast
+- CascadeTimeline(timeline: list[dict]) - Port impact timeline with hours_to_impact
+- GlobeVersion(version: int) - Trigger globe visualization (always use version=1)
+- TextBlock(text: str) - Narrative text explanation
+
+## Output Format
+Structure your response using OpenUI components when data is available. For narrative explanations, use TextBlock.
+Example: root = Stack([TextBlock(text="The Suez blockage affects 125 vessels..."), ImpactStats(vessels=125, routes=47, cost_usd=2_400_000), GlobeVersion(version=1)])
 
 Use specific numbers from the simulation data above. Be concise and factual.
 """

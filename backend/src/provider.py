@@ -68,31 +68,22 @@ async def chat_stream(request: ChatRequest):
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         async def no_key():
-            yield "event: text\ndata: " + json.dumps({"content": "[Set GEMINI_API_KEY in .env to enable LLM responses]"}) + "\n\n"
-            yield "event: done\ndata: {}\n\n"
+            yield "[Set GEMINI_API_KEY in .env to enable LLM responses]"
         return StreamingResponse(no_key(), media_type="text/event-stream")
 
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-1.5-flash")
 
-    async def event_stream():
-        all_entities = chokepoints + ports
-        if all_entities:
-            yield "event: globe_version\ndata: " + json.dumps(
-                {"version": 1, "entities": all_entities}
-            ) + "\n\n"
-
+    async def text_stream():
         try:
             response = model.generate_content(prompt, stream=True)
             for chunk in response:
                 if chunk.text:
-                    yield "event: text\ndata: " + json.dumps({"content": chunk.text}) + "\n\n"
+                    yield chunk.text
         except Exception as e:
-            yield "event: text\ndata: " + json.dumps({"content": f"[Error: {e}]"}) + "\n\n"
+            yield f"[Error: {e}]"
 
-        yield "event: done\ndata: {}\n\n"
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(text_stream(), media_type="text/event-stream")
 
 
 @app.get("/health")

@@ -1,15 +1,9 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
+import { useChat } from "@ai-sdk/react";
 import { Send } from "lucide-react";
 import SideGlobe from "@/components/SideGlobe";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
 
 const SUGGESTIONS = [
   "What if Suez Canal is blocked?",
@@ -39,10 +33,12 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   );
 }
 
+import { useState } from "react";
+
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+    api: "/api/chat/stream",
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -54,37 +50,16 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setInput("");
-    setMessages((prev) => [...prev, userMessage]);
-    setIsLoading(true);
-
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: "Causalis is ready. Backend integration coming soon.",
-          timestamp: new Date(),
-        },
-      ]);
-      setIsLoading(false);
-    }, 1000);
-  };
-
   const handleSuggestion = (text: string) => {
-    setInput(text);
+    const fakeEvent = {
+      target: inputRef.current,
+    } as React.ChangeEvent<HTMLInputElement>;
+    handleInputChange(fakeEvent);
+    if (inputRef.current) {
+      inputRef.current.value = text;
+      const event = new Event("input", { bubbles: true });
+      inputRef.current.dispatchEvent(event);
+    }
     inputRef.current?.focus();
   };
 
@@ -269,7 +244,7 @@ export default function ChatPage() {
                 ref={inputRef}
                 type="text"
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={handleInputChange}
                 placeholder="Ask about shipping routes, ports, carriers..."
                 disabled={isLoading}
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-500 disabled:opacity-50"
