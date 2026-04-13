@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import google.generativeai as genai
@@ -17,6 +18,14 @@ from src.rag import MaritimeKnowledgeBase
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 app = FastAPI(title="Causalis Streaming Provider")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 _world = None
 _temporal = None
@@ -105,6 +114,117 @@ async def chat_stream(request: ChatRequest):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/v1/spatial/ports")
+async def get_ports():
+    world, _, _, _ = _get_world()
+    ports = []
+    for _, port in world._ports.iterrows():
+        ports.append({
+            "id": port["id"],
+            "name": port["name"],
+            "latitude": float(port["latitude"]),
+            "longitude": float(port["longitude"]),
+            "country": port["country"],
+            "type": port["type"],
+            "annual_teu": int(port["annual_teu"]),
+            "max_draft_meters": float(port["max_draft_meters"]),
+            "typical_dwell_hours": int(port["typical_dwell_hours"]),
+        })
+    return {"ports": ports}
+
+
+@app.get("/v1/spatial/chokepoints")
+async def get_chokepoints():
+    world, _, _, _ = _get_world()
+    chokepoints = []
+    for _, cp in world._chokepoints.iterrows():
+        centroid = cp.geometry.centroid
+        chokepoints.append({
+            "id": cp["id"],
+            "name": cp["name"],
+            "latitude": centroid.y,
+            "longitude": centroid.x,
+            "type": cp["type"],
+            "daily_vessels": int(cp["daily_vessels"]),
+            "strategic_importance": int(cp["strategic_importance"]),
+        })
+    return {"chokepoints": chokepoints}
+
+
+@app.get("/v1/spatial/routes")
+async def get_routes():
+    world, _, _, _ = _get_world()
+    routes = []
+    for _, route in world._routes.iterrows():
+        routes.append({
+            "id": route["id"],
+            "name": route["name"],
+            "origin_port_id": route["origin_port_id"],
+            "destination_port_id": route["destination_port_id"],
+            "chokepoints_transited": route["chokepoints_transited"],
+            "distance_nm": float(route["distance_nm"]),
+            "transit_days": float(route["transit_days"]),
+        })
+    return {"routes": routes}
+
+
+@app.get("/v1/spatial/port/{port_id}")
+async def get_port(port_id: str):
+    world, _, _, _ = _get_world()
+    port_row = world._ports[world._ports["id"] == port_id]
+    if port_row.empty:
+        raise HTTPException(status_code=404, detail=f"Port '{port_id}' not found")
+    port = port_row.iloc[0]
+    return {
+        "id": port["id"],
+        "name": port["name"],
+        "latitude": float(port["latitude"]),
+        "longitude": float(port["longitude"]),
+        "country": port["country"],
+        "type": port["type"],
+        "annual_teu": int(port["annual_teu"]),
+        "max_draft_meters": float(port["max_draft_meters"]),
+        "typical_dwell_hours": int(port["typical_dwell_hours"]),
+    }
+
+
+@app.get("/v1/spatial/chokepoint/{chokepoint_id}")
+async def get_chokepoint(chokepoint_id: str):
+    world, _, _, _ = _get_world()
+    cp_row = world._chokepoints[world._chokepoints["id"] == chokepoint_id]
+    if cp_row.empty:
+        raise HTTPException(status_code=404, detail=f"Chokepoint '{chokepoint_id}' not found")
+    cp = cp_row.iloc[0]
+    centroid = cp.geometry.centroid
+    return {
+        "id": cp["id"],
+        "name": cp["name"],
+        "latitude": centroid.y,
+        "longitude": centroid.x,
+        "type": cp["type"],
+        "daily_vessels": int(cp["daily_vessels"]),
+        "strategic_importance": int(cp["strategic_importance"]),
+    }
+
+
+@app.get("/v1/spatial/route/{route_id}")
+async def get_route(route_id: str):
+    world, _, _, _ = _get_world()
+    route_row = world._routes[world._routes["id"] == route_id]
+    if route_row.empty:
+        raise HTTPException(status_code=404, detail=f"Route '{route_id}' not found")
+    route = route_row.iloc[0]
+    return {
+        "id": route["id"],
+        "name": route["name"],
+        "origin_port_id": route["origin_port_id"],
+        "destination_port_id": route["destination_port_id"],
+        "chokepoints_transited": route["chokepoints_transited"],
+        "distance_nm": float(route["distance_nm"]),
+        "transit_days": float(route["transit_days"]),
+    }
 
 
 if __name__ == "__main__":

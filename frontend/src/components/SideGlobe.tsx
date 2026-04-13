@@ -1,8 +1,12 @@
 "use client";
 
-import { useRef, useMemo, useEffect, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { useRef, useMemo, useEffect, useState, useCallback } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { Html } from "@react-three/drei";
+import { fetchSpatialData, getAllPorts, getAllChokepoints, getAllRoutes, SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
+import { buildArcGeometry, ArcData, computeArcsFromRoutes } from "@/lib/arc-utils";
+import { emitGlobeEvent } from "@/lib/globe-events";
 
 const R = 4;
 
@@ -15,27 +19,6 @@ function latLng(lat: number, lng: number, r: number) {
     r * Math.sin(phi) * Math.sin(theta)
   );
 }
-
-const CHOKEPOINTS = [
-  { lat: 30.5, lng: 32.3 }, { lat: 9.1, lng: -79.7 }, { lat: 2.5, lng: 101.5 },
-  { lat: 12.6, lng: 43.3 }, { lat: 26.5, lng: 56.3 }, { lat: 36.1, lng: -5.4 },
-  { lat: 1.4, lng: 104.0 }, { lat: 41.0, lng: 29.0 }, { lat: 34.1, lng: 32.3 },
-  { lat: -6.2, lng: 39.2 }, { lat: 13.0, lng: 100.5 }, { lat: 22.3, lng: 114.2 },
-];
-
-const PORTS = [
-  { lat: 31.2, lng: 121.5 }, { lat: 1.3, lng: 103.8 }, { lat: 51.9, lng: 4.5 },
-  { lat: 33.7, lng: -118.3 }, { lat: 25.2, lng: 55.3 }, { lat: 53.5, lng: 10.0 },
-  { lat: 22.3, lng: 114.2 }, { lat: 35.1, lng: 129.0 }, { lat: -33.9, lng: 18.4 },
-  { lat: 13.7, lng: 100.5 }, { lat: 22.0, lng: 114.1 }, { lat: 28.6, lng: 77.2 },
-  { lat: 1.3, lng: 124.9 }, { lat: -23.0, lng: -43.2 }, { lat: 19.1, lng: 72.9 },
-  { lat: 21.0, lng: -86.8 }, { lat: 51.0, lng: 1.3 }, { lat: 40.7, lng: -74.0 },
-];
-
-const ROUTES = [
-  [0, 1], [1, 2], [3, 1], [4, 1], [2, 5], [0, 6], [7, 0], [8, 2],
-  [9, 1], [11, 4], [12, 1], [13, 8], [14, 4], [16, 2], [17, 3], [15, 3],
-];
 
 interface GeoFeature {
   type: string;
@@ -63,31 +46,132 @@ function buildLandGeometry(features: GeoFeature[]): THREE.BufferGeometry {
   );
 }
 
-function buildRouteGeometry(): THREE.BufferGeometry {
-  const positions: number[] = [];
-  for (const [ai, bi] of ROUTES) {
-    const a = PORTS[ai], b = PORTS[bi];
-    const start = latLng(a.lat, a.lng, R * 1.005);
-    const end = latLng(b.lat, b.lng, R * 1.005);
-    const mid = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
-    mid.normalize().multiplyScalar(R * 1.2);
-    const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
-    const pts = curve.getPoints(24);
-    for (let i = 0; i < pts.length - 1; i++) {
-      positions.push(pts[i].x, pts[i].y, pts[i].z, pts[i + 1].x, pts[i + 1].y, pts[i + 1].z);
-    }
-  }
-  return new THREE.BufferGeometry().setAttribute(
-    "position", new THREE.Float32BufferAttribute(positions, 3)
+interface PinData {
+  position: THREE.Vector3;
+  id: string;
+  name: string;
+  type: "port" | "chokepoint";
+}
+
+interface GlobeProps {
+  countries: GeoFeature[];
+  ports: SpatialPort[];
+  chokepoints: SpatialChokepoint[];
+  routes: SpatialRoute[];
+  highlightedEntities: string[];
+  highlightedRouteIds: string[];
+  autoRotate?: boolean;
+  onPinClick?: (pinId: string) => void;
+  selectedPinId?: string | null;
+}
+
+function PinTooltip({ name, type, visible }: { name: string; type: string; visible: boolean }) {
+  if (!visible) return null;
+  return (
+    <Html distanceFactor={10}>
+      <div
+        style={{
+          backgroundColor: "rgba(0, 0, 0, 0.9)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          borderRadius: "6px",
+          padding: "8px 12px",
+          pointerEvents: "none",
+          whiteSpace: "nowrap",
+          opacity: visible ? 1 : 0,
+          transition: "opacity 150ms ease",
+          transform: "translate(-50%, -120%)",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-outfit), system-ui, sans-serif",
+            fontSize: "13px",
+            fontWeight: 500,
+            color: "#ffffff",
+            marginBottom: "2px",
+          }}
+        >
+          {name}
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: "10px",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: type === "port" ? "#22d3ee" : "#a855f7",
+          }}
+        >
+          {type}
+        </div>
+      </div>
+    </Html>
   );
 }
 
-const chokePositions = CHOKEPOINTS.map((cp) => latLng(cp.lat, cp.lng, R * 1.015));
+function PinMesh({
+  pin,
+  isSelected,
+  isHovered,
+  onClick,
+  onPointerEnter,
+  onPointerLeave,
+}: {
+  pin: PinData;
+  isSelected: boolean;
+  isHovered: boolean;
+  onClick: () => void;
+  onPointerEnter: () => void;
+  onPointerLeave: () => void;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
 
-function Globe({ countries }: { countries: GeoFeature[] }) {
+  const scale = isSelected ? 1.8 : isHovered ? 1.3 : 1;
+
+  useFrame(() => {
+    if (meshRef.current) {
+      meshRef.current.scale.lerp(new THREE.Vector3(scale, scale, scale), 0.15);
+    }
+  });
+
+  return (
+    <group position={pin.position}>
+      <mesh
+        ref={meshRef}
+        onClick={onClick}
+        onPointerEnter={onPointerEnter}
+        onPointerLeave={onPointerLeave}
+      >
+        <sphereGeometry args={[0.04, 8, 8]} />
+        <meshBasicMaterial color="#22d3ee" />
+      </mesh>
+      {isSelected && (
+        <mesh>
+          <ringGeometry args={[0.08, 0.1, 16]} />
+          <meshBasicMaterial color="#22d3ee" transparent opacity={0.6} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+      <PinTooltip name={pin.name} type={pin.type} visible={isHovered || isSelected} />
+    </group>
+  );
+}
+
+function Globe({
+  countries,
+  ports,
+  chokepoints,
+  routes,
+  highlightedEntities,
+  highlightedRouteIds,
+  autoRotate = false,
+  onPinClick,
+  selectedPinId,
+}: GlobeProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const elapsed = useRef(0);
   const glowMeshes = useRef<THREE.InstancedMesh>(null);
+  const elapsed = useRef(0);
+  const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
+  const { camera, gl } = useThree();
 
   const landGeo = useMemo(() => {
     if (countries.length === 0) return null;
@@ -109,26 +193,133 @@ function Globe({ countries }: { countries: GeoFeature[] }) {
     );
   }, []);
 
-  const routeGeo = useMemo(() => buildRouteGeometry(), []);
+  const portCoords = useMemo(() => {
+    const coords = new Map<string, { latitude: number; longitude: number }>();
+    for (const port of ports) {
+      coords.set(port.id, { latitude: port.latitude, longitude: port.longitude });
+    }
+    return coords;
+  }, [ports]);
+
+  const arcs = useMemo<ArcData[]>(() => {
+    return computeArcsFromRoutes(routes, portCoords, highlightedRouteIds);
+  }, [routes, portCoords, highlightedRouteIds]);
+
+  const backgroundArcs = useMemo(() => arcs.filter(a => !a.animated), [arcs]);
+  const affectedArcs = useMemo(() => arcs.filter(a => a.animated), [arcs]);
+
+  const backgroundArcGeos = useMemo(() => {
+    return backgroundArcs.map(arc => ({
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.2, 24),
+      routeId: arc.routeId,
+    }));
+  }, [backgroundArcs]);
+
+  const affectedArcGeos = useMemo(() => {
+    return affectedArcs.map(arc => ({
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.2, 24),
+      routeId: arc.routeId,
+    }));
+  }, [affectedArcs]);
+
+  const allPins = useMemo<PinData[]>(() => {
+    const pins: PinData[] = [];
+    for (const port of ports) {
+      pins.push({
+        position: latLng(port.latitude, port.longitude, R * 1.015),
+        id: port.id,
+        name: port.name,
+        type: "port",
+      });
+    }
+    for (const cp of chokepoints) {
+      pins.push({
+        position: latLng(cp.latitude, cp.longitude, R * 1.015),
+        id: cp.id,
+        name: cp.name,
+        type: "chokepoint",
+      });
+    }
+    return pins;
+  }, [ports, chokepoints]);
+
+  const visiblePins = useMemo(() => {
+    if (highlightedEntities.length === 0) return allPins;
+    return allPins.filter(pin => highlightedEntities.includes(pin.id));
+  }, [allPins, highlightedEntities]);
+
+  const glowPositions = useMemo(() => {
+    return visiblePins.map(pin => pin.position);
+  }, [visiblePins]);
+
+  const handlePinClick = useCallback((pinId: string) => {
+    onPinClick?.(pinId);
+    emitGlobeEvent({
+      version: 1,
+      entities: highlightedEntities,
+      selectedEntityId: pinId,
+    });
+  }, [onPinClick, highlightedEntities]);
+
+  const handleCanvasClick = useCallback((event: MouseEvent) => {
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    const rect = gl.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+
+    const globeGroup = groupRef.current;
+    if (!globeGroup) return;
+
+    const intersects = raycaster.intersectObjects(globeGroup.children, true);
+    const clickedPin = intersects.find(hit =>
+      visiblePins.some(pin =>
+        Math.abs(hit.point.distanceTo(pin.position)) < 0.1
+      )
+    );
+
+    if (!clickedPin) {
+      onPinClick?.(null as unknown as string);
+    }
+  }, [camera, gl, onPinClick, visiblePins]);
+
+  useEffect(() => {
+    gl.domElement.addEventListener("click", handleCanvasClick);
+    return () => gl.domElement.removeEventListener("click", handleCanvasClick);
+  }, [gl, handleCanvasClick]);
 
   useFrame((_, delta) => {
     elapsed.current += delta;
     const t = elapsed.current;
-    const rot = t * 0.06;
 
-    if (groupRef.current) groupRef.current.rotation.y = rot;
+    if (autoRotate && groupRef.current) {
+      groupRef.current.rotation.y = t * 0.06;
+    }
 
-    if (glowMeshes.current) {
+    if (glowMeshes.current && glowPositions.length > 0) {
       const dummy = new THREE.Object3D();
-      for (let i = 0; i < CHOKEPOINTS.length; i++) {
+      for (let i = 0; i < glowPositions.length; i++) {
         const s = 1 + Math.sin(t * 2 + i * 0.8) * 0.3;
-        dummy.position.copy(chokePositions[i]);
+        dummy.position.copy(glowPositions[i]);
         dummy.scale.setScalar(s);
         dummy.updateMatrix();
         glowMeshes.current.setMatrixAt(i, dummy.matrix);
       }
       glowMeshes.current.instanceMatrix.needsUpdate = true;
     }
+  });
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    groupRef.current.traverse((child) => {
+      if (child instanceof THREE.LineSegments) {
+        const material = child.material;
+        if (material instanceof THREE.LineDashedMaterial) {
+          (material as THREE.LineDashedMaterial & { dashOffset: number }).dashOffset -= 0.01;
+        }
+      }
+    });
   });
 
   return (
@@ -153,18 +344,40 @@ function Globe({ countries }: { countries: GeoFeature[] }) {
           </lineSegments>
         )}
 
-        <lineSegments geometry={routeGeo}>
-          <lineBasicMaterial color="#22d3ee" transparent opacity={0.12} />
-        </lineSegments>
-
-        {chokePositions.map((pos, i) => (
-          <mesh key={i} position={pos}>
-            <sphereGeometry args={[0.04, 8, 8]} />
-            <meshBasicMaterial color="#22d3ee" />
-          </mesh>
+        {backgroundArcGeos.map(({ geo, routeId }) => (
+          <lineSegments key={`bg-${routeId}`} geometry={geo}>
+            <lineBasicMaterial color="rgba(255,255,255,0.08)" transparent opacity={0.08} />
+          </lineSegments>
         ))}
 
-        <instancedMesh ref={glowMeshes} args={[undefined, undefined, CHOKEPOINTS.length]}>
+        {affectedArcGeos.map(({ geo, routeId }) => {
+          return (
+            <lineSegments key={routeId} geometry={geo}>
+              <lineDashedMaterial
+                color="#3b82f6"
+                dashSize={0.15}
+                gapSize={0.08}
+                linewidth={2}
+                transparent
+                opacity={0.8}
+              />
+            </lineSegments>
+          );
+        })}
+
+        {visiblePins.map((pin) => (
+          <PinMesh
+            key={pin.id}
+            pin={pin}
+            isSelected={selectedPinId === pin.id}
+            isHovered={hoveredPinId === pin.id}
+            onClick={() => handlePinClick(pin.id)}
+            onPointerEnter={() => setHoveredPinId(pin.id)}
+            onPointerLeave={() => setHoveredPinId(null)}
+          />
+        ))}
+
+        <instancedMesh ref={glowMeshes} args={[undefined, undefined, Math.max(1, glowPositions.length)]}>
           <sphereGeometry args={[0.12, 8, 8]} />
           <meshBasicMaterial color="#22d3ee" transparent opacity={0.12} />
         </instancedMesh>
@@ -178,8 +391,28 @@ function Globe({ countries }: { countries: GeoFeature[] }) {
   );
 }
 
-export default function SideGlobe() {
+export interface SideGlobeProps {
+  highlightedEntities?: string[];
+  highlightedRouteIds?: string[];
+  autoRotate?: boolean;
+  onPinClick?: (pinId: string) => void;
+  selectedPinId?: string | null;
+  dpr?: number;
+}
+
+export default function SideGlobe({
+  highlightedEntities = [],
+  highlightedRouteIds = [],
+  autoRotate = false,
+  onPinClick,
+  selectedPinId,
+  dpr = 1,
+}: SideGlobeProps) {
   const [countries, setCountries] = useState<GeoFeature[]>([]);
+  const [ports, setPorts] = useState<SpatialPort[]>([]);
+  const [chokepoints, setChokepoints] = useState<SpatialChokepoint[]>([]);
+  const [routes, setRoutes] = useState<SpatialRoute[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -193,16 +426,39 @@ export default function SideGlobe() {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    fetchSpatialData()
+      .then(() => {
+        setPorts(getAllPorts());
+        setChokepoints(getAllChokepoints());
+        setRoutes(getAllRoutes());
+        setDataLoaded(true);
+      })
+      .catch((err) => console.error("Failed to load spatial data:", err));
+  }, []);
+
   return (
-    <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)" }}>
+    <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)", pointerEvents: "auto" }}>
       <Canvas
         camera={{ position: [-1.75, 0, 10.5], fov: 45 }}
-        dpr={1}
+        dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         style={{ background: "transparent" }}
       >
         <color attach="background" args={["#000000"]} />
-        <Globe countries={countries} />
+        {dataLoaded && (
+          <Globe
+            countries={countries}
+            ports={ports}
+            chokepoints={chokepoints}
+            routes={routes}
+            highlightedEntities={highlightedEntities}
+            highlightedRouteIds={highlightedRouteIds}
+            autoRotate={autoRotate}
+            onPinClick={onPinClick}
+            selectedPinId={selectedPinId}
+          />
+        )}
       </Canvas>
     </div>
   );
