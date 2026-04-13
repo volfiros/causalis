@@ -1,10 +1,10 @@
 "use client";
 
 import { useRef, useMemo, useEffect, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { subscribeToGlobeEvents } from "@/lib/globe-events";
-import { fetchSpatialData, getAllPorts, getAllChokepoints, getEntityCoords, SpatialPort, SpatialChokepoint } from "@/lib/spatial-data";
+import { fetchSpatialData, getAllPorts, getAllChokepoints, getAllRoutes, SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
+import { buildArcGeometry, ArcData, computeArcsFromRoutes } from "@/lib/arc-utils";
 
 const R = 4;
 
@@ -55,13 +55,16 @@ interface GlobeProps {
   countries: GeoFeature[];
   ports: SpatialPort[];
   chokepoints: SpatialChokepoint[];
+  routes: SpatialRoute[];
   highlightedEntities: string[];
+  highlightedRouteIds: string[];
   autoRotate?: boolean;
 }
 
-function Globe({ countries, ports, chokepoints, highlightedEntities, autoRotate = false }: GlobeProps) {
+function Globe({ countries, ports, chokepoints, routes, highlightedEntities, highlightedRouteIds, autoRotate = false }: GlobeProps) {
   const groupRef = useRef<THREE.Group>(null);
   const glowMeshes = useRef<THREE.InstancedMesh>(null);
+  const affectedArcsRef = useRef<THREE.LineSegments>(null);
   const elapsed = useRef(0);
 
   const landGeo = useMemo(() => {
@@ -83,6 +86,35 @@ function Globe({ countries, ports, chokepoints, highlightedEntities, autoRotate 
       "position", new THREE.BufferAttribute(new Float32Array(pts), 3)
     );
   }, []);
+
+  const portCoords = useMemo(() => {
+    const coords = new Map<string, { latitude: number; longitude: number }>();
+    for (const port of ports) {
+      coords.set(port.id, { latitude: port.latitude, longitude: port.longitude });
+    }
+    return coords;
+  }, [ports]);
+
+  const arcs = useMemo<ArcData[]>(() => {
+    return computeArcsFromRoutes(routes, portCoords, highlightedRouteIds);
+  }, [routes, portCoords, highlightedRouteIds]);
+
+  const backgroundArcs = useMemo(() => arcs.filter(a => !a.animated), [arcs]);
+  const affectedArcs = useMemo(() => arcs.filter(a => a.animated), [arcs]);
+
+  const backgroundArcGeos = useMemo(() => {
+    return backgroundArcs.map(arc => ({
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.2, 24),
+      routeId: arc.routeId,
+    }));
+  }, [backgroundArcs]);
+
+  const affectedArcGeos = useMemo(() => {
+    return affectedArcs.map(arc => ({
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.2, 24),
+      routeId: arc.routeId,
+    }));
+  }, [affectedArcs]);
 
   const allPins = useMemo<PinData[]>(() => {
     const pins: PinData[] = [];
@@ -135,6 +167,18 @@ function Globe({ countries, ports, chokepoints, highlightedEntities, autoRotate 
     }
   });
 
+  useFrame(() => {
+    if (!groupRef.current) return;
+    groupRef.current.traverse((child) => {
+      if (child instanceof THREE.LineSegments) {
+        const material = child.material;
+        if (material instanceof THREE.LineDashedMaterial) {
+          material.dashOffset -= 0.01;
+        }
+      }
+    });
+  });
+
   return (
     <>
       <ambientLight intensity={0.2} />
@@ -156,6 +200,28 @@ function Globe({ countries, ports, chokepoints, highlightedEntities, autoRotate 
             <lineBasicMaterial color="#ffffff" transparent opacity={0.12} />
           </lineSegments>
         )}
+
+        {backgroundArcGeos.map(({ geo, routeId }) => (
+          <lineSegments key={`bg-${routeId}`} geometry={geo}>
+            <lineBasicMaterial color="rgba(255,255,255,0.08)" transparent opacity={0.08} />
+          </lineSegments>
+        ))}
+
+        {affectedArcGeos.map(({ geo, routeId }) => {
+          geo.computeLineDistances();
+          return (
+            <lineSegments key={routeId} geometry={geo}>
+              <lineDashedMaterial
+                color="#3b82f6"
+                dashSize={0.15}
+                gapSize={0.08}
+                linewidth={2}
+                transparent
+                opacity={0.8}
+              />
+            </lineSegments>
+          );
+        })}
 
         {visiblePins.map((pin) => (
           <mesh key={pin.id} position={pin.position}>
@@ -180,13 +246,15 @@ function Globe({ countries, ports, chokepoints, highlightedEntities, autoRotate 
 
 export interface SideGlobeProps {
   highlightedEntities?: string[];
+  highlightedRouteIds?: string[];
   autoRotate?: boolean;
 }
 
-export default function SideGlobe({ highlightedEntities = [], autoRotate = false }: SideGlobeProps) {
+export default function SideGlobe({ highlightedEntities = [], highlightedRouteIds = [], autoRotate = false }: SideGlobeProps) {
   const [countries, setCountries] = useState<GeoFeature[]>([]);
   const [ports, setPorts] = useState<SpatialPort[]>([]);
   const [chokepoints, setChokepoints] = useState<SpatialChokepoint[]>([]);
+  const [routes, setRoutes] = useState<SpatialRoute[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
@@ -206,6 +274,7 @@ export default function SideGlobe({ highlightedEntities = [], autoRotate = false
       .then(() => {
         setPorts(getAllPorts());
         setChokepoints(getAllChokepoints());
+        setRoutes(getAllRoutes());
         setDataLoaded(true);
       })
       .catch((err) => console.error("Failed to load spatial data:", err));
@@ -225,7 +294,9 @@ export default function SideGlobe({ highlightedEntities = [], autoRotate = false
             countries={countries}
             ports={ports}
             chokepoints={chokepoints}
+            routes={routes}
             highlightedEntities={highlightedEntities}
+            highlightedRouteIds={highlightedRouteIds}
             autoRotate={autoRotate}
           />
         )}
