@@ -2,11 +2,12 @@
 
 import { useRef, useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
+import { TextStreamChatTransport } from "ai";
 import { Send } from "lucide-react";
 import { Renderer } from "@openuidev/react-lang";
 import SideGlobe from "@/components/SideGlobe";
 import { library } from "@/lib/openui-library";
-import { subscribeToGlobeEvents } from "@/lib/globe-events";
+import { GlobeEventPayload, subscribeToGlobeEvents } from "@/lib/globe-events";
 
 const SUGGESTIONS = [
   "What if Suez Canal is blocked?",
@@ -37,13 +38,13 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 }
 
 function GlobeSidebar({
-  version,
+  globeState,
   onClose,
 }: {
-  version: number | null;
+  globeState: GlobeEventPayload | null;
   onClose: () => void;
 }) {
-  if (version === null) return null;
+  if (globeState === null) return null;
 
   return (
     <div
@@ -99,23 +100,75 @@ function GlobeSidebar({
           color: "rgba(255, 255, 255, 0.5)",
         }}
       >
-        Version {version}
+        Version {globeState.version}
+      </div>
+      <div style={{ marginTop: "24px" }}>
+        <div
+          style={{
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: "11px",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "rgba(255, 255, 255, 0.4)",
+            marginBottom: "12px",
+          }}
+        >
+          Entities
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {globeState.entities.length === 0 ? (
+            <div
+              style={{
+                fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                fontSize: "14px",
+                color: "rgba(255, 255, 255, 0.5)",
+              }}
+            >
+              No spatial entities provided.
+            </div>
+          ) : (
+            globeState.entities.map((entity) => (
+              <div
+                key={entity}
+                style={{
+                  padding: "10px 12px",
+                  backgroundColor: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: "8px",
+                  fontFamily: "var(--font-mono), ui-monospace, monospace",
+                  fontSize: "12px",
+                  color: "#22d3ee",
+                }}
+              >
+                {entity}
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
+function getMessageText(message: { parts?: Array<{ type: string; text?: string }> }) {
+  return (message.parts ?? [])
+    .filter((part) => part.type === "text" && typeof part.text === "string")
+    .map((part) => part.text)
+    .join("");
+}
+
 function ChatContent() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: "/api/chat/stream",
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new TextStreamChatTransport({ api: "/api/chat/stream" }),
   });
+  const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [globeVersion, setGlobeVersion] = useState<number | null>(null);
+  const [globeState, setGlobeState] = useState<GlobeEventPayload | null>(null);
 
   useEffect(() => {
-    const unsubscribe = subscribeToGlobeEvents((version) => {
-      setGlobeVersion(version);
+    const unsubscribe = subscribeToGlobeEvents((payload) => {
+      setGlobeState(payload);
     });
     return unsubscribe;
   }, []);
@@ -128,23 +181,26 @@ function ChatContent() {
     scrollToBottom();
   }, [messages]);
 
+  const isLoading = status === "submitted" || status === "streaming";
+
   const handleSuggestion = (text: string) => {
-    const fakeEvent = {
-      target: inputRef.current,
-    } as React.ChangeEvent<HTMLInputElement>;
-    handleInputChange(fakeEvent);
-    if (inputRef.current) {
-      inputRef.current.value = text;
-      const event = new Event("input", { bubbles: true });
-      inputRef.current.dispatchEvent(event);
-    }
+    setInput(text);
     inputRef.current?.focus();
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const nextInput = input;
+    setInput("");
+    await sendMessage({ text: nextInput });
   };
 
   return (
     <>
       <SideGlobe />
-      <GlobeSidebar version={globeVersion} onClose={() => setGlobeVersion(null)} />
+      <GlobeSidebar globeState={globeState} onClose={() => setGlobeState(null)} />
 
       <div className="absolute inset-0 pointer-events-none">
         <div
@@ -258,13 +314,13 @@ function ChatContent() {
                             fontFamily: "var(--font-outfit), system-ui, sans-serif",
                           }}
                         >
-                          {msg.content}
+                          {getMessageText(msg)}
                         </p>
                       ) : (
                         <Renderer
-                          response={msg.content}
+                          response={getMessageText(msg)}
                           library={library}
-                          isStreaming={false}
+                          isStreaming={isLoading && msg.id === messages[messages.length - 1]?.id}
                         />
                       )}
                     </div>
@@ -330,7 +386,7 @@ function ChatContent() {
           className="px-12 lg:px-20 py-6"
           style={{ borderTop: "1px solid rgba(255, 255, 255, 0.05)" }}
         >
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
+          <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto">
             <div
               className="flex items-center gap-3 px-5 py-4 transition-all duration-300"
               style={{
@@ -351,7 +407,7 @@ function ChatContent() {
                 ref={inputRef}
                 type="text"
                 value={input}
-                onChange={handleInputChange}
+                onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask about shipping routes, ports, carriers..."
                 disabled={isLoading}
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-500 disabled:opacity-50"

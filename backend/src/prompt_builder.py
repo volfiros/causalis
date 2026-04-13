@@ -1,8 +1,21 @@
+from typing import Optional
+
 from src.simulator import SimulationResult
 
 
-def build_prompt(user_message: str, simulation: SimulationResult, rag_context: str = "") -> str:
+def _format_globe_entities(globe_entities: list[str]) -> str:
+    return repr(globe_entities)
+
+
+def build_prompt(
+    user_message: str,
+    simulation: SimulationResult,
+    rag_context: str = "",
+    globe_entities: Optional[list[str]] = None,
+) -> str:
     sim_dict = simulation.to_dict()
+    globe_entities = globe_entities or sim_dict["scenario"]["chokepoints"]
+    globe_entities_text = _format_globe_entities(globe_entities)
 
     rerouting_lines = []
     for alt in sim_dict["rerouting"]["alternatives"]:
@@ -72,7 +85,7 @@ Use OpenUI Lang to structure your response when displaying data. Wrap data visua
 root = Stack([
   ImpactStats(vessels={sim_dict['scenario']['affected_vessels']}, routes=47, cost_usd=2_400_000),
   CarrierTable(carriers=[{{'name': 'MSC', 'exposure': 0.92}}, {{'name': 'Maersk', 'exposure': 0.87}}]),
-  GlobeVersion(version=1)
+  GlobeVersion(version=1, entities={globe_entities_text})
 ])
 
 Available components:
@@ -81,12 +94,16 @@ Available components:
 - ReroutingCard(route_id: str, additional_days: int, additional_cost_usd: int, vessels_affected: int) - Route alternative info
 - PortCongestion(port_id: str, baseline: float, forecast: float, dwell_increase_hours: float) - Port congestion forecast
 - CascadeTimeline(timeline: list[dict]) - Port impact timeline with hours_to_impact
-- GlobeVersion(version: int) - Trigger globe visualization (always use version=1)
+- GlobeVersion(version: int, entities: list[str]) - Trigger globe visualization with the relevant chokepoints and ports (always use version=1)
 - TextBlock(text: str) - Narrative text explanation
+
+## Spatial Entities
+Use these exact entity ids when rendering GlobeVersion:
+{globe_entities_text}
 
 ## Output Format
 Structure your response using OpenUI components when data is available. For narrative explanations, use TextBlock.
-Example: root = Stack([TextBlock(text="The Suez blockage affects 125 vessels..."), ImpactStats(vessels=125, routes=47, cost_usd=2_400_000), GlobeVersion(version=1)])
+Example: root = Stack([TextBlock(text="The Suez blockage affects 125 vessels..."), ImpactStats(vessels=125, routes=47, cost_usd=2_400_000), GlobeVersion(version=1, entities={globe_entities_text})])
 
 Use specific numbers from the simulation data above. Be concise and factual.
 """

@@ -1,34 +1,7 @@
 import { createLibrary, defineComponent } from "@openuidev/react-lang";
+import { useEffect } from "react";
 import { z } from "zod";
 import { emitGlobeEvent } from "./globe-events";
-
-export const ImpactStats = defineComponent({
-  name: "ImpactStats",
-  description: "High-level metrics grid showing vessels affected, routes disrupted, and estimated cost",
-  props: z.object({
-    vessels: z.number().describe("Number of vessels affected"),
-    routes: z.number().describe("Number of routes disrupted"),
-    cost_usd: z.number().describe("Estimated cost impact in USD"),
-  }),
-  component: ({ vessels, routes, cost_usd }) => (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gap: "1px",
-        backgroundColor: "rgba(255, 255, 255, 0.08)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        borderRadius: "8px",
-        overflow: "hidden",
-        marginBottom: "16px",
-      }}
-    >
-      <StatCell label="Vessels" value={vessels.toLocaleString()} />
-      <StatCell label="Routes" value={routes.toLocaleString()} />
-      <StatCell label="Est. Cost" value={`$${(cost_usd / 1_000_000).toFixed(1)}M`} highlight />
-    </div>
-  ),
-});
 
 function StatCell({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
@@ -65,6 +38,38 @@ function StatCell({ label, value, highlight }: { label: string; value: string; h
   );
 }
 
+export const ImpactStats = defineComponent({
+  name: "ImpactStats",
+  description: "High-level metrics grid showing vessels affected, routes disrupted, and estimated cost",
+  props: z.object({
+    vessels: z.number().describe("Number of vessels affected"),
+    routes: z.number().describe("Number of routes disrupted"),
+    cost_usd: z.number().describe("Estimated cost impact in USD"),
+  }),
+  component: ({ props }) => {
+    const { vessels, routes, cost_usd } = props;
+
+    return (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "1px",
+          backgroundColor: "rgba(255, 255, 255, 0.08)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "8px",
+          overflow: "hidden",
+          marginBottom: "16px",
+        }}
+      >
+        <StatCell label="Vessels" value={vessels.toLocaleString()} />
+        <StatCell label="Routes" value={routes.toLocaleString()} />
+        <StatCell label="Est. Cost" value={`$${(cost_usd / 1_000_000).toFixed(1)}M`} highlight />
+      </div>
+    );
+  },
+});
+
 export const CarrierTable = defineComponent({
   name: "CarrierTable",
   description: "Carrier exposure ranking with exposure scores",
@@ -73,87 +78,91 @@ export const CarrierTable = defineComponent({
       z.object({
         name: z.string().describe("Carrier name"),
         exposure: z.number().describe("Exposure score 0-1"),
-      })
+      }),
     ).describe("List of carriers with exposure data"),
   }),
-  component: ({ carriers }) => (
-    <div
-      style={{
-        backgroundColor: "rgba(255, 255, 255, 0.03)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        borderRadius: "8px",
-        overflow: "hidden",
-        marginBottom: "16px",
-      }}
-    >
+  component: ({ props }) => {
+    const { carriers } = props;
+
+    return (
       <div
         style={{
-          padding: "12px 16px",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          fontFamily: "var(--font-mono), ui-monospace, monospace",
-          fontSize: "11px",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: "rgba(255, 255, 255, 0.5)",
+          backgroundColor: "rgba(255, 255, 255, 0.03)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "8px",
+          overflow: "hidden",
+          marginBottom: "16px",
         }}
       >
-        Carrier Exposure
-      </div>
-      {carriers.slice(0, 5).map((carrier, i) => (
         <div
-          key={i}
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
             padding: "12px 16px",
-            borderBottom: i < carriers.length - 1 ? "1px solid rgba(255, 255, 255, 0.05)" : "none",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: "11px",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "rgba(255, 255, 255, 0.5)",
           }}
         >
-          <span
+          Carrier Exposure
+        </div>
+        {carriers.slice(0, 5).map((carrier, i) => (
+          <div
+            key={i}
             style={{
-              fontFamily: "var(--font-outfit), system-ui, sans-serif",
-              fontSize: "14px",
-              color: "#ffffff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "12px 16px",
+              borderBottom: i < carriers.length - 1 ? "1px solid rgba(255, 255, 255, 0.05)" : "none",
             }}
           >
-            {carrier.name}
-          </span>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div
-              style={{
-                width: "80px",
-                height: "4px",
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-                borderRadius: "2px",
-                overflow: "hidden",
-              }}
-            >
-              <div
-                style={{
-                  width: `${carrier.exposure * 100}%`,
-                  height: "100%",
-                  backgroundColor: carrier.exposure > 0.7 ? "#22d3ee" : "rgba(255, 255, 255, 0.5)",
-                  borderRadius: "2px",
-                }}
-              />
-            </div>
             <span
               style={{
-                fontFamily: "var(--font-mono), ui-monospace, monospace",
-                fontSize: "12px",
-                color: "rgba(255, 255, 255, 0.7)",
-                minWidth: "36px",
-                textAlign: "right",
+                fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                fontSize: "14px",
+                color: "#ffffff",
               }}
             >
-              {(carrier.exposure * 100).toFixed(0)}%
+              {carrier.name}
             </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div
+                style={{
+                  width: "80px",
+                  height: "4px",
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: "2px",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${carrier.exposure * 100}%`,
+                    height: "100%",
+                    backgroundColor: carrier.exposure > 0.7 ? "#22d3ee" : "rgba(255, 255, 255, 0.5)",
+                    borderRadius: "2px",
+                  }}
+                />
+              </div>
+              <span
+                style={{
+                  fontFamily: "var(--font-mono), ui-monospace, monospace",
+                  fontSize: "12px",
+                  color: "rgba(255, 255, 255, 0.7)",
+                  minWidth: "36px",
+                  textAlign: "right",
+                }}
+              >
+                {(carrier.exposure * 100).toFixed(0)}%
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
-    </div>
-  ),
+        ))}
+      </div>
+    );
+  },
 });
 
 export const ReroutingCard = defineComponent({
@@ -165,95 +174,99 @@ export const ReroutingCard = defineComponent({
     additional_cost_usd: z.number().describe("Additional cost in USD"),
     vessels_affected: z.number().describe("Number of vessels affected"),
   }),
-  component: ({ route_id, additional_days, additional_cost_usd, vessels_affected }) => (
-    <div
-      style={{
-        backgroundColor: "rgba(255, 255, 255, 0.03)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        borderRadius: "8px",
-        padding: "16px",
-        marginBottom: "12px",
-      }}
-    >
+  component: ({ props }) => {
+    const { route_id, additional_days, additional_cost_usd, vessels_affected } = props;
+
+    return (
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
+          backgroundColor: "rgba(255, 255, 255, 0.03)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "8px",
+          padding: "16px",
           marginBottom: "12px",
         }}
       >
-        <span
+        <div
           style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "12px",
-            color: "rgba(255, 255, 255, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "12px",
           }}
         >
-          {route_id}
-        </span>
-        <span
-          style={{
-            fontFamily: "var(--font-outfit), system-ui, sans-serif",
-            fontSize: "12px",
-            color: "rgba(255, 255, 255, 0.7)",
-          }}
-        >
-          {vessels_affected} vessels
-        </span>
-      </div>
-      <div style={{ display: "flex", gap: "24px" }}>
-        <div>
-          <div
+          <span
             style={{
               fontFamily: "var(--font-mono), ui-monospace, monospace",
-              fontSize: "10px",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "rgba(255, 255, 255, 0.4)",
-              marginBottom: "4px",
+              fontSize: "12px",
+              color: "rgba(255, 255, 255, 0.5)",
             }}
           >
-            Delay
-          </div>
-          <div
+            {route_id}
+          </span>
+          <span
             style={{
               fontFamily: "var(--font-outfit), system-ui, sans-serif",
-              fontSize: "18px",
-              fontWeight: 600,
-              color: "#22d3ee",
+              fontSize: "12px",
+              color: "rgba(255, 255, 255, 0.7)",
             }}
           >
-            +{additional_days} days
-          </div>
+            {vessels_affected} vessels
+          </span>
         </div>
-        <div>
-          <div
-            style={{
-              fontFamily: "var(--font-mono), ui-monospace, monospace",
-              fontSize: "10px",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: "rgba(255, 255, 255, 0.4)",
-              marginBottom: "4px",
-            }}
-          >
-            Added Cost
+        <div style={{ display: "flex", gap: "24px" }}>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono), ui-monospace, monospace",
+                fontSize: "10px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(255, 255, 255, 0.4)",
+                marginBottom: "4px",
+              }}
+            >
+              Delay
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                fontSize: "18px",
+                fontWeight: 600,
+                color: "#22d3ee",
+              }}
+            >
+              +{additional_days} days
+            </div>
           </div>
-          <div
-            style={{
-              fontFamily: "var(--font-outfit), system-ui, sans-serif",
-              fontSize: "18px",
-              fontWeight: 600,
-              color: "#ffffff",
-            }}
-          >
-            ${(additional_cost_usd / 1000).toFixed(0)}K
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono), ui-monospace, monospace",
+                fontSize: "10px",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "rgba(255, 255, 255, 0.4)",
+                marginBottom: "4px",
+              }}
+            >
+              Added Cost
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                fontSize: "18px",
+                fontWeight: 600,
+                color: "#ffffff",
+              }}
+            >
+              ${(additional_cost_usd / 1000).toFixed(0)}K
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  ),
+    );
+  },
 });
 
 export const PortCongestion = defineComponent({
@@ -265,9 +278,11 @@ export const PortCongestion = defineComponent({
     forecast: z.number().describe("Forecast congestion level"),
     dwell_increase_hours: z.number().describe("Additional dwell time in hours"),
   }),
-  component: ({ port_id, baseline, forecast, dwell_increase_hours }) => {
+  component: ({ props }) => {
+    const { port_id, baseline, forecast, dwell_increase_hours } = props;
     const change = forecast - baseline;
-    const changePercent = ((change / baseline) * 100).toFixed(1);
+    const changePercent = baseline === 0 ? "0.0" : ((change / baseline) * 100).toFixed(1);
+
     return (
       <div
         style={{
@@ -420,78 +435,96 @@ export const CascadeTimeline = defineComponent({
       z.object({
         port: z.string().describe("Port name"),
         hours_to_impact: z.number().describe("Hours until impact"),
-      })
+      }),
     ).describe("List of ports with impact timing"),
   }),
-  component: ({ timeline }) => (
-    <div
-      style={{
-        backgroundColor: "rgba(255, 255, 255, 0.03)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        borderRadius: "8px",
-        padding: "16px",
-        marginBottom: "16px",
-      }}
-    >
+  component: ({ props }) => {
+    const { timeline } = props;
+
+    return (
       <div
         style={{
-          fontFamily: "var(--font-mono), ui-monospace, monospace",
-          fontSize: "11px",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          color: "rgba(255, 255, 255, 0.5)",
+          backgroundColor: "rgba(255, 255, 255, 0.03)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "8px",
+          padding: "16px",
           marginBottom: "16px",
         }}
       >
-        Cascade Timeline
+        <div
+          style={{
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: "11px",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "rgba(255, 255, 255, 0.5)",
+            marginBottom: "16px",
+          }}
+        >
+          Cascade Timeline
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {timeline.slice(0, 5).map((entry, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <div
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  backgroundColor: i === 0 ? "#22d3ee" : "rgba(255, 255, 255, 0.3)",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                  fontSize: "14px",
+                  color: "#ffffff",
+                  flex: 1,
+                }}
+              >
+                {entry.port}
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-mono), ui-monospace, monospace",
+                  fontSize: "12px",
+                  color: i === 0 ? "#22d3ee" : "rgba(255, 255, 255, 0.5)",
+                }}
+              >
+                +{entry.hours_to_impact}h
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        {timeline.slice(0, 5).map((entry, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div
-              style={{
-                width: "8px",
-                height: "8px",
-                borderRadius: "50%",
-                backgroundColor: i === 0 ? "#22d3ee" : "rgba(255, 255, 255, 0.3)",
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                fontSize: "14px",
-                color: "#ffffff",
-                flex: 1,
-              }}
-            >
-              {entry.port}
-            </span>
-            <span
-              style={{
-                fontFamily: "var(--font-mono), ui-monospace, monospace",
-                fontSize: "12px",
-                color: i === 0 ? "#22d3ee" : "rgba(255, 255, 255, 0.5)",
-              }}
-            >
-              +{entry.hours_to_impact}h
-            </span>
-          </div>
-        ))}
-      </div>
+    );
+  },
+});
+
+export const Stack = defineComponent({
+  name: "Stack",
+  description: "Vertical layout container for grouping OpenUI components",
+  props: z.object({
+    children: z.array(z.any()).default([]).describe("Child components to render vertically"),
+  }),
+  component: ({ props, renderNode }) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {props.children.map((child, index) => (
+        <div key={index}>{renderNode(child)}</div>
+      ))}
     </div>
   ),
 });
 
-export const GlobeVersion = defineComponent({
-  name: "GlobeVersion",
-  description: "Trigger to display the 3D globe visualization with affected entities",
-  props: z.object({
-    version: z.number().describe("Version identifier for the globe state"),
-  }),
-  component: ({ version }) => (
+function GlobeVersionButton({ version, entities }: { version: number; entities: string[] }) {
+  useEffect(() => {
+    emitGlobeEvent({ version, entities });
+  }, [version, entities]);
+
+  return (
     <button
-      onClick={() => emitGlobeEvent(version)}
+      onClick={() => emitGlobeEvent({ version, entities })}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -518,7 +551,17 @@ export const GlobeVersion = defineComponent({
       <span style={{ fontSize: "16px" }}>🌐</span>
       <span>Globe: Version {version}</span>
     </button>
-  ),
+  );
+}
+
+export const GlobeVersion = defineComponent({
+  name: "GlobeVersion",
+  description: "Trigger to display the 3D globe visualization with affected entities",
+  props: z.object({
+    version: z.number().describe("Version identifier for the globe state"),
+    entities: z.array(z.string()).default([]).describe("Relevant chokepoint and port ids for the globe state"),
+  }),
+  component: ({ props }) => <GlobeVersionButton version={props.version} entities={props.entities} />,
 });
 
 export const TextBlock = defineComponent({
@@ -527,7 +570,7 @@ export const TextBlock = defineComponent({
   props: z.object({
     text: z.string().describe("Text content to display"),
   }),
-  component: ({ text }) => (
+  component: ({ props }) => (
     <p
       style={{
         fontFamily: "var(--font-outfit), system-ui, sans-serif",
@@ -537,7 +580,7 @@ export const TextBlock = defineComponent({
         marginBottom: "16px",
       }}
     >
-      {text}
+      {props.text}
     </p>
   ),
 });
@@ -545,6 +588,7 @@ export const TextBlock = defineComponent({
 export const library = createLibrary({
   root: "Stack",
   components: [
+    Stack,
     ImpactStats,
     CarrierTable,
     ReroutingCard,

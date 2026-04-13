@@ -1,4 +1,9 @@
-type GlobeEventCallback = (version: number) => void;
+export interface GlobeEventPayload {
+  version: number;
+  entities: string[];
+}
+
+type GlobeEventCallback = (payload: GlobeEventPayload) => void;
 
 const listeners: GlobeEventCallback[] = [];
 
@@ -12,6 +17,6 @@ export function subscribeToGlobeEvents(callback: GlobeEventCallback): () => void
   };
 }
 
-export function emitGlobeEvent(version: number): void {
-  listeners.forEach((callback) => callback(version));
+export function emitGlobeEvent(payload: GlobeEventPayload): void {
+  listeners.forEach((callback) => callback(payload));
 }

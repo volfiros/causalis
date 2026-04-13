@@ -88,7 +88,6 @@ function Globe({ countries }: { countries: GeoFeature[] }) {
   const groupRef = useRef<THREE.Group>(null);
   const elapsed = useRef(0);
   const glowMeshes = useRef<THREE.InstancedMesh>(null);
-  const pointLightRef = useRef<THREE.PointLight>(null);
 
   const landGeo = useMemo(() => {
     if (countries.length === 0) return null;

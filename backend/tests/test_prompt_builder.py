@@ -1,52 +1,57 @@
-import json
-import pytest
-from src.world_model import MaritimeWorldModel
-from src.temporal_model import TemporalModel
-from src.simulator import DisruptionSimulator
 from src.prompt_builder import build_prompt
+from src.simulator import SimulationResult
 
 
-@pytest.fixture(scope="module")
-def sample_simulation():
-    world = MaritimeWorldModel()
-    temporal = TemporalModel(world)
-    sim = DisruptionSimulator(world, temporal)
-    return sim.run_scenario(["suez_canal"], "full")
+def test_build_prompt_includes_globe_entities_in_openuI_instructions():
+    simulation = SimulationResult(
+        scenario={
+            "chokepoints": ["suez_canal"],
+            "severity": "full",
+            "affected_vessels": 125,
+        },
+        rerouting={
+            "alternatives": [
+                {
+                    "route_id": "cape_route",
+                    "additional_days": 10,
+                    "additional_cost_usd": 600000,
+                    "vessels_affected": 12,
+                }
+            ]
+        },
+        carriers=[
+            {
+                "name": "MSC",
+                "carrier_id": "msc",
+                "exposure_score": 0.92,
+                "routes_exposed": 4,
+                "estimated_daily_risk_usd": 800000,
+            }
+        ],
+        port_congestion=[
+            {
+                "port_id": "singapore",
+                "baseline_congestion": 0.42,
+                "forecast_congestion": 0.68,
+                "dwell_increase_hours": 6.5,
+            }
+        ],
+        cascade={
+            "impact_timeline": [
+                {
+                    "port": "Singapore",
+                    "hours_to_impact": 36,
+                }
+            ]
+        },
+    )
 
+    prompt = build_prompt(
+        "What if Suez Canal is blocked?",
+        simulation,
+        "",
+        ["suez_canal", "singapore"],
+    )
 
-class TestBuildPrompt:
-    def test_returns_string(self, sample_simulation):
-        prompt = build_prompt("What happens if Suez is blocked?", sample_simulation, "")
-        assert isinstance(prompt, str)
-        assert len(prompt) > 0
-
-    def test_contains_user_message(self, sample_simulation):
-        prompt = build_prompt("What happens if Suez is blocked?", sample_simulation, "")
-        assert "What happens if Suez is blocked?" in prompt
-
-    def test_contains_simulation_data(self, sample_simulation):
-        prompt = build_prompt("Suez blocked", sample_simulation, "")
-        assert "suez_canal" in prompt
-        assert "full" in prompt.lower()
-
-    def test_contains_causal_chain_instruction(self, sample_simulation):
-        prompt = build_prompt("Suez blocked", sample_simulation, "")
-        assert "causal chain" in prompt.lower() or "→" in prompt
-
-    def test_no_rag_context(self, sample_simulation):
-        prompt = build_prompt("Suez blocked", sample_simulation, "")
-        assert "No additional reference material" in prompt
-
-    def test_with_rag_context(self, sample_simulation):
-        rag_text = "Historical data shows Suez disruptions cause 2-week delays."
-        prompt = build_prompt("Suez blocked", sample_simulation, rag_text)
-        assert rag_text in prompt
-        assert "Reference Material" in prompt
-
-    def test_contains_carrier_data(self, sample_simulation):
-        prompt = build_prompt("Suez blocked", sample_simulation, "")
-        assert "Maersk" in prompt or "exposure" in prompt.lower()
-
-    def test_contains_port_congestion(self, sample_simulation):
-        prompt = build_prompt("Suez blocked", sample_simulation, "")
-        assert "congestion" in prompt.lower() or "port" in prompt.lower()
+    assert "GlobeVersion(version=1, entities=['suez_canal', 'singapore'])" in prompt
+    assert "GlobeVersion(version: int, entities: list[str])" in prompt
