@@ -4,24 +4,28 @@ import { useRef, useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Send, Globe } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Renderer } from "@openuidev/react-lang";
 import SideGlobe from "@/components/SideGlobe";
 import { library } from "@/lib/openui-library";
 import { GlobeEventPayload, subscribeToGlobeEvents } from "@/lib/globe-events";
-import { getPortById, getChokepointById, fetchSpatialData, SpatialPort, SpatialChokepoint } from "@/lib/spatial-data";
+import {
+  getPortById,
+  getChokepointById,
+  fetchSpatialData,
+  getAllPorts,
+  getAllChokepoints,
+  getAllRoutes,
+  SpatialPort,
+  SpatialChokepoint,
+  SpatialRoute,
+} from "@/lib/spatial-data";
+import { GlobeSidebar, EntityInfo } from "@/components/globe-sidebar";
 
 const SUGGESTIONS = [
   "What if Suez Canal is blocked?",
   "Which carriers are most exposed to Red Sea risk?",
   "How does a Panama disruption affect US retail?",
 ];
-
-interface EntityInfo {
-  id: string;
-  name: string;
-  type: "port" | "chokepoint";
-}
 
 function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const [shown, setShown] = useState(false);
@@ -95,16 +99,42 @@ function GlobeNavButton({
   );
 }
 
-function GlobeSidebar({
-  globeState,
-  onClose,
-  isOpen,
-}: {
-  globeState: GlobeEventPayload | null;
-  onClose: () => void;
-  isOpen: boolean;
-}) {
+function getMessageText(message: { parts?: Array<{ type: string; text?: string }> }) {
+  return (message.parts ?? [])
+    .filter((part) => part.type === "text" && typeof part.text === "string")
+    .map((part) => part.text)
+    .join("");
+}
+
+function ChatContent() {
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new TextStreamChatTransport({ api: "/api/chat/stream" }),
+  });
+  const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [globeState, setGlobeState] = useState<GlobeEventPayload | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dataInitialized, setDataInitialized] = useState(false);
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
   const [entityInfos, setEntityInfos] = useState<EntityInfo[]>([]);
+  const [ports, setPorts] = useState<SpatialPort[]>([]);
+  const [chokepoints, setChokepoints] = useState<SpatialChokepoint[]>([]);
+  const [routes, setRoutes] = useState<SpatialRoute[]>([]);
+  const [highlightedRouteIds, setHighlightedRouteIds] = useState<string[]>([]);
+  const clientVersionRef = useRef(0);
+  const previousEntitiesRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetchSpatialData()
+      .then(() => {
+        setPorts(getAllPorts());
+        setChokepoints(getAllChokepoints());
+        setRoutes(getAllRoutes());
+        setDataInitialized(true);
+      })
+      .catch((err) => console.error("Failed to initialize spatial data:", err));
+  }, []);
 
   useEffect(() => {
     if (!globeState) {
@@ -127,188 +157,49 @@ function GlobeSidebar({
     setEntityInfos(infos);
   }, [globeState]);
 
-  return (
-    <AnimatePresence>
-      {isOpen && globeState !== null && (
-        <motion.div
-          initial={{ x: "100%" }}
-          animate={{ x: 0 }}
-          exit={{ x: "100%" }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            width: "320px",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.95)",
-            borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
-            zIndex: 20,
-            padding: "24px",
-            overflow: "auto",
-          }}
-        >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "24px",
-        }}
-      >
-        <h3
-          style={{
-            fontFamily: "var(--font-outfit), system-ui, sans-serif",
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "#ffffff",
-          }}
-        >
-          Globe View
-        </h3>
-        <button
-          onClick={onClose}
-          style={{
-            background: "none",
-            border: "none",
-            color: "rgba(255, 255, 255, 0.5)",
-            cursor: "pointer",
-            fontSize: "18px",
-            padding: "4px",
-          }}
-        >
-          ×
-        </button>
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-mono), ui-monospace, monospace",
-          fontSize: "12px",
-          color: "rgba(255, 255, 255, 0.5)",
-        }}
-      >
-        Version {globeState.version}
-      </div>
-      <div style={{ marginTop: "24px" }}>
-        <div
-          style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "11px",
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            color: "rgba(255, 255, 255, 0.4)",
-            marginBottom: "12px",
-          }}
-        >
-          Entities
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {entityInfos.length === 0 ? (
-            <div
-              style={{
-                fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                fontSize: "14px",
-                color: "rgba(255, 255, 255, 0.5)",
-              }}
-            >
-              No spatial entities provided.
-            </div>
-          ) : (
-            entityInfos.map((entity) => (
-              <div
-                key={entity.id}
-                style={{
-                  padding: "10px 12px",
-                  backgroundColor: "rgba(255, 255, 255, 0.03)",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                    fontSize: "13px",
-                    color: "#ffffff",
-                  }}
-                >
-                  {entity.name}
-                </span>
-                <span
-                  style={{
-                    fontFamily: "var(--font-mono), ui-monospace, monospace",
-                    fontSize: "10px",
-                    padding: "2px 6px",
-                    backgroundColor: entity.type === "port" ? "rgba(34, 211, 238, 0.15)" : "rgba(168, 85, 247, 0.15)",
-                    color: entity.type === "port" ? "#22d3ee" : "#a855f7",
-                    borderRadius: "4px",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                  }}
-                >
-                  {entity.type}
-                </span>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function getMessageText(message: { parts?: Array<{ type: string; text?: string }> }) {
-  return (message.parts ?? [])
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text)
-    .join("");
-}
-
-function ChatContent() {
-  const { messages, sendMessage, status, error } = useChat({
-    transport: new TextStreamChatTransport({ api: "/api/chat/stream" }),
-  });
-  const [input, setInput] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [globeState, setGlobeState] = useState<GlobeEventPayload | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [dataInitialized, setDataInitialized] = useState(false);
-  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
-  const clientVersionRef = useRef(0);
-  const previousEntitiesRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetchSpatialData()
-      .then(() => setDataInitialized(true))
-      .catch((err) => console.error("Failed to initialize spatial data:", err));
-  }, []);
-
   useEffect(() => {
     const unsubscribe = subscribeToGlobeEvents((payload) => {
-      const newEntityIds = payload.entities.filter(id => !previousEntitiesRef.has(id));
+      const newEntityIds = payload.entities.filter((id) => !previousEntitiesRef.current.has(id));
       const hasNewEntities = newEntityIds.length > 0;
-      const removedEntityIds = Array.from(previousEntitiesRef).filter(id => !payload.entities.includes(id));
+      const removedEntityIds = Array.from(previousEntitiesRef.current).filter(
+        (id) => !payload.entities.includes(id)
+      );
       const hasRemovedEntities = removedEntityIds.length > 0;
 
       if (hasNewEntities || hasRemovedEntities) {
         clientVersionRef.current += 1;
         previousEntitiesRef.current.clear();
-        payload.entities.forEach(id => previousEntitiesRef.current.add(id));
+        payload.entities.forEach((id) => previousEntitiesRef.current.add(id));
       }
 
-      setGlobeState({
+      const eventPayload: GlobeEventPayload = {
         ...payload,
         version: clientVersionRef.current,
-      });
+      };
+
+      setGlobeState(eventPayload);
       setIsSidebarOpen(true);
+
+      if (payload.selectedEntityId) {
+        setSelectedPinId(payload.selectedEntityId);
+      }
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (selectedPinId) {
+      const routesInvolving = routes.filter(
+        (r) =>
+          r.chokepoints_transited.includes(selectedPinId) ||
+          r.origin_port_id === selectedPinId ||
+          r.destination_port_id === selectedPinId
+      );
+      setHighlightedRouteIds(routesInvolving.map((r) => r.id));
+    } else {
+      setHighlightedRouteIds([]);
+    }
+  }, [selectedPinId, routes]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -334,9 +225,17 @@ function ChatContent() {
     await sendMessage({ text: nextInput });
   };
 
+  const handleEntitySelect = (entityId: string) => {
+    setSelectedPinId(entityId === selectedPinId ? null : entityId);
+  };
+
+  const handleClearFilters = () => {
+    setSelectedPinId(null);
+    setHighlightedRouteIds([]);
+  };
+
   const highlightedEntities = globeState?.entities ?? [];
   const currentVersion = globeState?.version ?? 0;
-  const highlightedRouteIds = globeState?.highlightedRouteIds ?? [];
 
   return (
     <>
@@ -355,8 +254,15 @@ function ChatContent() {
 
       <GlobeSidebar
         globeState={globeState}
-        onClose={() => setIsSidebarOpen(false)}
         isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        entityInfos={entityInfos}
+        selectedEntityId={selectedPinId}
+        onEntitySelect={handleEntitySelect}
+        ports={ports}
+        chokepoints={chokepoints}
+        routes={routes}
+        onClearFilters={handleClearFilters}
       />
 
       <div className="absolute inset-0 pointer-events-none">
