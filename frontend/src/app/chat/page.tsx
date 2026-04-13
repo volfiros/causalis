@@ -1,9 +1,12 @@
 "use client";
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { Send } from "lucide-react";
+import { Renderer } from "@openuidev/react-lang";
 import SideGlobe from "@/components/SideGlobe";
+import { library } from "@/lib/openui-library";
+import { subscribeToGlobeEvents } from "@/lib/globe-events";
 
 const SUGGESTIONS = [
   "What if Suez Canal is blocked?",
@@ -33,14 +36,89 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   );
 }
 
-import { useState } from "react";
+function GlobeSidebar({
+  version,
+  onClose,
+}: {
+  version: number | null;
+  onClose: () => void;
+}) {
+  if (version === null) return null;
 
-export default function ChatPage() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        width: "320px",
+        height: "100%",
+        backgroundColor: "rgba(0, 0, 0, 0.95)",
+        borderLeft: "1px solid rgba(255, 255, 255, 0.08)",
+        zIndex: 20,
+        padding: "24px",
+        overflow: "auto",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "24px",
+        }}
+      >
+        <h3
+          style={{
+            fontFamily: "var(--font-outfit), system-ui, sans-serif",
+            fontSize: "14px",
+            fontWeight: 600,
+            color: "#ffffff",
+          }}
+        >
+          Globe View
+        </h3>
+        <button
+          onClick={onClose}
+          style={{
+            background: "none",
+            border: "none",
+            color: "rgba(255, 255, 255, 0.5)",
+            cursor: "pointer",
+            fontSize: "18px",
+            padding: "4px",
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--font-mono), ui-monospace, monospace",
+          fontSize: "12px",
+          color: "rgba(255, 255, 255, 0.5)",
+        }}
+      >
+        Version {version}
+      </div>
+    </div>
+  );
+}
+
+function ChatContent() {
   const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     api: "/api/chat/stream",
   });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [globeVersion, setGlobeVersion] = useState<number | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToGlobeEvents((version) => {
+      setGlobeVersion(version);
+    });
+    return unsubscribe;
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -64,8 +142,9 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-black">
+    <>
       <SideGlobe />
+      <GlobeSidebar version={globeVersion} onClose={() => setGlobeVersion(null)} />
 
       <div className="absolute inset-0 pointer-events-none">
         <div
@@ -157,7 +236,7 @@ export default function ChatPage() {
                     className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className="max-w-[80%] px-5 py-3"
+                      className="max-w-[85%] px-5 py-3"
                       style={
                         msg.role === "user"
                           ? {
@@ -168,21 +247,26 @@ export default function ChatPage() {
                           : {
                               backgroundColor: "rgba(255, 255, 255, 0.05)",
                               border: "1px solid rgba(255, 255, 255, 0.08)",
-                              color: "rgba(255, 255, 255, 0.9)",
                               borderRadius: "12px 12px 12px 4px",
                             }
                       }
                     >
-                      <p
-                        className="text-sm leading-relaxed"
-                        style={{
-                          fontFamily: msg.role === "user"
-                            ? "var(--font-outfit), system-ui, sans-serif"
-                            : "inherit",
-                        }}
-                      >
-                        {msg.content}
-                      </p>
+                      {msg.role === "user" ? (
+                        <p
+                          className="text-sm leading-relaxed"
+                          style={{
+                            fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                          }}
+                        >
+                          {msg.content}
+                        </p>
+                      ) : (
+                        <Renderer
+                          response={msg.content}
+                          library={library}
+                          isStreaming={false}
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
@@ -269,6 +353,14 @@ export default function ChatPage() {
           </form>
         </div>
       </div>
+    </>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <div className="relative h-screen w-screen overflow-hidden bg-black">
+      <ChatContent />
     </div>
   );
 }

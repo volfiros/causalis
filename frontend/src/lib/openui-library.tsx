@@ -1,5 +1,6 @@
 import { createLibrary, defineComponent } from "@openuidev/react-lang";
 import { z } from "zod";
+import { emitGlobeEvent } from "./globe-events";
 
 export const ImpactStats = defineComponent({
   name: "ImpactStats",
@@ -490,6 +491,7 @@ export const GlobeVersion = defineComponent({
   }),
   component: ({ version }) => (
     <button
+      onClick={() => emitGlobeEvent(version)}
       style={{
         display: "inline-flex",
         alignItems: "center",
