@@ -160,6 +160,61 @@ class TestForecastPortCongestion:
             assert p["dwell_increase_hours"] >= 0
 
 
+class TestCascadePropagation:
+    def test_suez_cascade_has_timeline(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        cascade = simulator._compute_cascade(affected, "full")
+        assert "impact_timeline" in cascade
+        assert len(cascade["impact_timeline"]) > 0
+
+    def test_cascade_timeline_sorted(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        cascade = simulator._compute_cascade(affected, "full")
+        hours = [entry["hours_to_impact"] for entry in cascade["impact_timeline"]]
+        assert hours == sorted(hours)
+
+    def test_directly_impacted_ports_at_hour_zero(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        cascade = simulator._compute_cascade(affected, "full")
+        hour_zero_ports = [e["port"] for e in cascade["impact_timeline"] if e["hours_to_impact"] == 0]
+        affected_port_ids = {
+            port for r in affected for port in [r["origin_port_id"], r["destination_port_id"]]
+        }
+        assert affected_port_ids.issubset(set(hour_zero_ports))
+
+    def test_cascade_reaches_distant_ports(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        cascade = simulator._compute_cascade(affected, "full")
+        port_ids = {e["port"] for e in cascade["impact_timeline"]}
+        assert "rotterdam" in port_ids
+
+    def test_cascade_hours_non_negative(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        cascade = simulator._compute_cascade(affected, "full")
+        for entry in cascade["impact_timeline"]:
+            assert entry["hours_to_impact"] >= 0
+
+    def test_cascade_max_30_days(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        cascade = simulator._compute_cascade(affected, "full")
+        for entry in cascade["impact_timeline"]:
+            assert entry["hours_to_impact"] <= 720
+
+    def test_cascade_port_ids_valid(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        cascade = simulator._compute_cascade(affected, "full")
+        graph_nodes = set(simulator._graph.nodes)
+        for entry in cascade["impact_timeline"]:
+            assert entry["port"] in graph_nodes, f"Invalid port: {entry['port']}"
+
+    def test_full_pipeline_integration(self, simulator):
+        result = simulator.run_scenario(["suez_canal"], "full")
+        assert len(result.rerouting["alternatives"]) > 0
+        assert len(result.carriers) > 0
+        assert len(result.port_congestion) > 0
+        assert len(result.cascade["impact_timeline"]) > 0
+
+
 class TestRunScenario:
     def test_returns_simulation_result(self, simulator):
         result = simulator.run_scenario(["suez_canal"], "full")
