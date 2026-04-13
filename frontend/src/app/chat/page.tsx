@@ -278,6 +278,9 @@ function ChatContent() {
   const [globeState, setGlobeState] = useState<GlobeEventPayload | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [dataInitialized, setDataInitialized] = useState(false);
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  const clientVersionRef = useRef(0);
+  const previousEntitiesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     fetchSpatialData()
@@ -287,7 +290,21 @@ function ChatContent() {
 
   useEffect(() => {
     const unsubscribe = subscribeToGlobeEvents((payload) => {
-      setGlobeState(payload);
+      const newEntityIds = payload.entities.filter(id => !previousEntitiesRef.has(id));
+      const hasNewEntities = newEntityIds.length > 0;
+      const removedEntityIds = Array.from(previousEntitiesRef).filter(id => !payload.entities.includes(id));
+      const hasRemovedEntities = removedEntityIds.length > 0;
+
+      if (hasNewEntities || hasRemovedEntities) {
+        clientVersionRef.current += 1;
+        previousEntitiesRef.current.clear();
+        payload.entities.forEach(id => previousEntitiesRef.current.add(id));
+      }
+
+      setGlobeState({
+        ...payload,
+        version: clientVersionRef.current,
+      });
       setIsSidebarOpen(true);
     });
     return unsubscribe;
@@ -319,10 +336,16 @@ function ChatContent() {
 
   const highlightedEntities = globeState?.entities ?? [];
   const currentVersion = globeState?.version ?? 0;
+  const highlightedRouteIds = globeState?.highlightedRouteIds ?? [];
 
   return (
     <>
-      <SideGlobe highlightedEntities={highlightedEntities} />
+      <SideGlobe
+        highlightedEntities={highlightedEntities}
+        highlightedRouteIds={highlightedRouteIds}
+        selectedPinId={selectedPinId}
+        onPinClick={setSelectedPinId}
+      />
 
       <GlobeNavButton
         version={currentVersion}

@@ -1,6 +1,8 @@
 export interface GlobeEventPayload {
   version: number;
   entities: string[];
+  selectedEntityId?: string;
+  highlightedRouteIds?: string[];
 }
 
 type GlobeEventCallback = (payload: GlobeEventPayload) => void;
