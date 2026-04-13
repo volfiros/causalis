@@ -3,17 +3,24 @@
 import { useRef, useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
-import { Send } from "lucide-react";
+import { Send, Globe } from "lucide-react";
 import { Renderer } from "@openuidev/react-lang";
 import SideGlobe from "@/components/SideGlobe";
 import { library } from "@/lib/openui-library";
 import { GlobeEventPayload, subscribeToGlobeEvents } from "@/lib/globe-events";
+import { getPortById, getChokepointById, fetchSpatialData, SpatialPort, SpatialChokepoint } from "@/lib/spatial-data";
 
 const SUGGESTIONS = [
   "What if Suez Canal is blocked?",
   "Which carriers are most exposed to Red Sea risk?",
   "How does a Panama disruption affect US retail?",
 ];
+
+interface EntityInfo {
+  id: string;
+  name: string;
+  type: "port" | "chokepoint";
+}
 
 function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const [shown, setShown] = useState(false);
@@ -37,14 +44,89 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
   );
 }
 
+function GlobeNavButton({
+  version,
+  isOpen,
+  onClick,
+}: {
+  version: number;
+  isOpen: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: "fixed",
+        top: "20px",
+        right: isOpen ? "340px" : "20px",
+        zIndex: 30,
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        padding: "10px 14px",
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        border: `1px solid ${isOpen ? "rgba(34, 211, 238, 0.5)" : "rgba(255, 255, 255, 0.08)"}`,
+        borderRadius: "8px",
+        cursor: "pointer",
+        transition: "all 300ms ease",
+        boxShadow: isOpen ? "0 0 20px rgba(34, 211, 238, 0.3)" : "none",
+      }}
+    >
+      <Globe
+        className="w-5 h-5"
+        style={{ color: isOpen ? "#22d3ee" : "rgba(255, 255, 255, 0.7)" }}
+      />
+      {version > 0 && (
+        <span
+          style={{
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: "11px",
+            fontWeight: 600,
+            color: isOpen ? "#22d3ee" : "rgba(255, 255, 255, 0.7)",
+            letterSpacing: "0.05em",
+          }}
+        >
+          V{version}
+        </span>
+      )}
+    </button>
+  );
+}
+
 function GlobeSidebar({
   globeState,
   onClose,
+  isOpen,
 }: {
   globeState: GlobeEventPayload | null;
   onClose: () => void;
+  isOpen: boolean;
 }) {
-  if (globeState === null) return null;
+  const [entityInfos, setEntityInfos] = useState<EntityInfo[]>([]);
+
+  useEffect(() => {
+    if (!globeState) {
+      setEntityInfos([]);
+      return;
+    }
+
+    const infos: EntityInfo[] = [];
+    for (const entityId of globeState.entities) {
+      const port = getPortById(entityId);
+      if (port) {
+        infos.push({ id: entityId, name: port.name, type: "port" });
+        continue;
+      }
+      const chokepoint = getChokepointById(entityId);
+      if (chokepoint) {
+        infos.push({ id: entityId, name: chokepoint.name, type: "chokepoint" });
+      }
+    }
+    setEntityInfos(infos);
+  }, [globeState]);
+
+  if (!isOpen || globeState === null) return null;
 
   return (
     <div
@@ -59,8 +141,19 @@ function GlobeSidebar({
         zIndex: 20,
         padding: "24px",
         overflow: "auto",
+        animation: "slideIn 300ms ease forwards",
       }}
     >
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+          }
+          to {
+            transform: translateX(0);
+          }
+        }
+      `}</style>
       <div
         style={{
           display: "flex",
@@ -116,7 +209,7 @@ function GlobeSidebar({
           Entities
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {globeState.entities.length === 0 ? (
+          {entityInfos.length === 0 ? (
             <div
               style={{
                 fontFamily: "var(--font-outfit), system-ui, sans-serif",
@@ -127,20 +220,42 @@ function GlobeSidebar({
               No spatial entities provided.
             </div>
           ) : (
-            globeState.entities.map((entity) => (
+            entityInfos.map((entity) => (
               <div
-                key={entity}
+                key={entity.id}
                 style={{
                   padding: "10px 12px",
                   backgroundColor: "rgba(255, 255, 255, 0.03)",
                   border: "1px solid rgba(255, 255, 255, 0.08)",
                   borderRadius: "8px",
-                  fontFamily: "var(--font-mono), ui-monospace, monospace",
-                  fontSize: "12px",
-                  color: "#22d3ee",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
               >
-                {entity}
+                <span
+                  style={{
+                    fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                    fontSize: "13px",
+                    color: "#ffffff",
+                  }}
+                >
+                  {entity.name}
+                </span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono), ui-monospace, monospace",
+                    fontSize: "10px",
+                    padding: "2px 6px",
+                    backgroundColor: entity.type === "port" ? "rgba(34, 211, 238, 0.15)" : "rgba(168, 85, 247, 0.15)",
+                    color: entity.type === "port" ? "#22d3ee" : "#a855f7",
+                    borderRadius: "4px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  {entity.type}
+                </span>
               </div>
             ))
           )}
@@ -165,10 +280,19 @@ function ChatContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [globeState, setGlobeState] = useState<GlobeEventPayload | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [dataInitialized, setDataInitialized] = useState(false);
+
+  useEffect(() => {
+    fetchSpatialData()
+      .then(() => setDataInitialized(true))
+      .catch((err) => console.error("Failed to initialize spatial data:", err));
+  }, []);
 
   useEffect(() => {
     const unsubscribe = subscribeToGlobeEvents((payload) => {
       setGlobeState(payload);
+      setIsSidebarOpen(true);
     });
     return unsubscribe;
   }, []);
@@ -197,10 +321,24 @@ function ChatContent() {
     await sendMessage({ text: nextInput });
   };
 
+  const highlightedEntities = globeState?.entities ?? [];
+  const currentVersion = globeState?.version ?? 0;
+
   return (
     <>
-      <SideGlobe />
-      <GlobeSidebar globeState={globeState} onClose={() => setGlobeState(null)} />
+      <SideGlobe highlightedEntities={highlightedEntities} />
+
+      <GlobeNavButton
+        version={currentVersion}
+        isOpen={isSidebarOpen}
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+      />
+
+      <GlobeSidebar
+        globeState={globeState}
+        onClose={() => setIsSidebarOpen(false)}
+        isOpen={isSidebarOpen}
+      />
 
       <div className="absolute inset-0 pointer-events-none">
         <div
