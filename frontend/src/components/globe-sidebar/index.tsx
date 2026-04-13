@@ -53,8 +53,8 @@ export function GlobeSidebar({
   isFullscreen = false,
   onToggleFullscreen,
 }: GlobeSidebarProps) {
-  const selectedPort = selectedEntityId ? ports.find(p => p.id === selectedEntityId) : null;
-  const selectedChokepoint = selectedEntityId ? chokepoints.find(cp => cp.id === selectedEntityId) : null;
+  const selectedPort = selectedEntityId ? ports.find(p => p.id === selectedEntityId) ?? null : null;
+  const selectedChokepoint = selectedEntityId ? chokepoints.find(cp => cp.id === selectedEntityId) ?? null : null;
 
   return (
     <AnimatePresence>

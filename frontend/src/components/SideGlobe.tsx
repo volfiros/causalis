@@ -316,7 +316,7 @@ function Globe({
       if (child instanceof THREE.LineSegments) {
         const material = child.material;
         if (material instanceof THREE.LineDashedMaterial) {
-          material.dashOffset -= 0.01;
+          (material as THREE.LineDashedMaterial & { dashOffset: number }).dashOffset -= 0.01;
         }
       }
     });
@@ -351,7 +351,6 @@ function Globe({
         ))}
 
         {affectedArcGeos.map(({ geo, routeId }) => {
-          geo.computeLineDistances();
           return (
             <lineSegments key={routeId} geometry={geo}>
               <lineDashedMaterial

@@ -121,7 +121,7 @@ function FloatingChatPanel({
   input: string;
   setInput: (s: string) => void;
   isLoading: boolean;
-  error: Error | null;
+  error: Error | undefined;
   onSubmit: (e: React.FormEvent) => void;
   isExpanded: boolean;
   setIsExpanded: (v: boolean) => void;
@@ -340,11 +340,257 @@ function FloatingChatPanel({
   );
 }
 
+function ChatPanel({
+  messages,
+  input,
+  setInput,
+  isLoading,
+  error,
+  inputRef,
+  handleFormSubmit,
+  handleSuggestion,
+  messagesEndRef,
+}: {
+  messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>;
+  input: string;
+  setInput: (s: string) => void;
+  isLoading: boolean;
+  error: Error | undefined;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  handleFormSubmit: (e: React.FormEvent) => void;
+  handleSuggestion: (text: string) => void;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div className="relative z-10 flex flex-col h-full">
+      <header
+        className="px-12 lg:px-20 py-5 flex items-center justify-between"
+        style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}
+      >
+        <p
+          className="text-xs font-medium tracking-[0.2em] uppercase"
+          style={{
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            color: "rgba(255, 255, 255, 0.3)",
+          }}
+        >
+          Causalis
+        </p>
+        <p
+          className="text-[11px] tracking-[0.15em] uppercase"
+          style={{
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            color: "rgba(255, 255, 255, 0.2)",
+          }}
+        >
+          Session Active
+        </p>
+      </header>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-12 lg:px-20 py-12">
+          {messages.length === 0 ? (
+            <FadeIn delay={200}>
+              <div className="mb-12">
+                <h2
+                  className="text-3xl md:text-4xl font-semibold leading-[1.1] tracking-tight mb-4"
+                  style={{ fontFamily: "var(--font-outfit), system-ui, sans-serif" }}
+                >
+                  Ask anything about global shipping.
+                </h2>
+                <p
+                  className="text-base leading-relaxed max-w-md"
+                  style={{ color: "rgba(255, 255, 255, 0.4)" }}
+                >
+                  Query shipping routes, ports, carriers, or disruption scenarios.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                {SUGGESTIONS.map((text, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSuggestion(text)}
+                    className="w-full text-left px-5 py-4 text-sm transition-all duration-300"
+                    style={{
+                      backgroundColor: "rgba(255, 255, 255, 0.03)",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      color: "rgba(255, 255, 255, 0.5)",
+                      borderRadius: "8px",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.06)";
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.15)";
+                      e.currentTarget.style.color = "#ffffff";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.03)";
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
+                      e.currentTarget.style.color = "rgba(255, 255, 255, 0.5)";
+                    }}
+                  >
+                    {text}
+                  </button>
+                ))}
+              </div>
+            </FadeIn>
+          ) : (
+            <div className="space-y-6">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className="max-w-[85%] px-5 py-3"
+                    style={
+                      msg.role === "user"
+                        ? {
+                            backgroundColor: "#ffffff",
+                            color: "#000000",
+                            borderRadius: "12px 12px 4px 12px",
+                          }
+                        : {
+                            backgroundColor: "rgba(255, 255, 255, 0.05)",
+                            border: "1px solid rgba(255, 255, 255, 0.08)",
+                            borderRadius: "12px 12px 12px 4px",
+                          }
+                    }
+                  >
+                    {msg.role === "user" ? (
+                      <p
+                        className="text-sm leading-relaxed"
+                        style={{
+                          fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                        }}
+                      >
+                        {getMessageText(msg)}
+                      </p>
+                    ) : (
+                      <Renderer
+                        response={getMessageText(msg)}
+                        library={library}
+                        isStreaming={isLoading && msg.id === messages[messages.length - 1]?.id}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div
+                    className="px-5 py-4"
+                    style={{
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      borderRadius: "12px 12px 12px 4px",
+                    }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {[0, 150, 300].map((delay) => (
+                        <div
+                          key={delay}
+                          className="w-1.5 h-1.5 rounded-full animate-bounce"
+                          style={{
+                            backgroundColor: "#22d3ee",
+                            animationDelay: `${delay}ms`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="flex justify-start">
+                  <div
+                    className="px-5 py-3"
+                    style={{
+                      backgroundColor: "rgba(239, 68, 68, 0.1)",
+                      border: "1px solid rgba(239, 68, 68, 0.3)",
+                      borderRadius: "12px 12px 12px 4px",
+                    }}
+                  >
+                    <p
+                      className="text-sm"
+                      style={{
+                        fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                        color: "rgba(239, 68, 68, 0.9)",
+                      }}
+                    >
+                      {error.message || "Something went wrong. Please try again."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div
+        className="px-12 lg:px-20 py-6"
+        style={{ borderTop: "1px solid rgba(255, 255, 255, 0.05)" }}
+      >
+        <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto">
+          <div
+            className="flex items-center gap-3 px-5 py-4 transition-all duration-300"
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.03)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "8px",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.2)";
+              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
+              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.03)";
+            }}
+          >
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about shipping routes, ports, carriers..."
+              disabled={isLoading}
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-500 disabled:opacity-50"
+              style={{
+                fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                color: "#ffffff",
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!input.trim() || isLoading}
+              className="p-2 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
+              style={{
+                backgroundColor: input.trim() && !isLoading ? "#22d3ee" : "transparent",
+                color: input.trim() && !isLoading ? "#000000" : "#71717a",
+                borderRadius: "6px",
+              }}
+            >
+              <Send className="w-4 h-4" strokeWidth={2} />
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function ChatContent() {
   const { messages, sendMessage, status, error } = useChat({
     transport: new TextStreamChatTransport({ api: "/api/chat/stream" }),
   });
   const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [globeState, setGlobeState] = useState<GlobeEventPayload | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -540,230 +786,21 @@ function ChatContent() {
       </div>
 
       {!isFullscreen && (
-        <div className="relative z-10 flex flex-col h-full">
-        <header
-          className="px-12 lg:px-20 py-5 flex items-center justify-between"
-          style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}
-        >
-          <p
-            className="text-xs font-medium tracking-[0.2em] uppercase"
-            style={{
-              fontFamily: "var(--font-mono), ui-monospace, monospace",
-              color: "rgba(255, 255, 255, 0.3)",
-            }}
-          >
-            Causalis
-          </p>
-          <p
-            className="text-[11px] tracking-[0.15em] uppercase"
-            style={{
-              fontFamily: "var(--font-mono), ui-monospace, monospace",
-              color: "rgba(255, 255, 255, 0.2)",
-            }}
-          >
-            Session Active
-          </p>
-        </header>
-
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-2xl mx-auto px-12 lg:px-20 py-12">
-            {messages.length === 0 ? (
-              <FadeIn delay={200}>
-                <div className="mb-12">
-                  <h2
-                    className="text-3xl md:text-4xl font-semibold leading-[1.1] tracking-tight mb-4"
-                    style={{ fontFamily: "var(--font-outfit), system-ui, sans-serif" }}
-                  >
-                    Ask anything about global shipping.
-                  </h2>
-                  <p
-                    className="text-base leading-relaxed max-w-md"
-                    style={{ color: "rgba(255, 255, 255, 0.4)" }}
-                  >
-                    Query shipping routes, ports, carriers, or disruption scenarios.
-                  </p>
-                </div>
-
-                <div className="space-y-3">
-                  {SUGGESTIONS.map((text, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleSuggestion(text)}
-                      className="w-full text-left px-5 py-4 text-sm transition-all duration-300"
-                      style={{
-                        backgroundColor: "rgba(255, 255, 255, 0.03)",
-                        border: "1px solid rgba(255, 255, 255, 0.08)",
-                        color: "rgba(255, 255, 255, 0.5)",
-                        borderRadius: "8px",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.06)";
-                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.15)";
-                        e.currentTarget.style.color = "#ffffff";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.03)";
-                        e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
-                        e.currentTarget.style.color = "rgba(255, 255, 255, 0.5)";
-                      }}
-                    >
-                      {text}
-                    </button>
-                  ))}
-                </div>
-              </FadeIn>
-            ) : (
-              <div className="space-y-6">
-                {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className="max-w-[85%] px-5 py-3"
-                      style={
-                        msg.role === "user"
-                          ? {
-                              backgroundColor: "#ffffff",
-                              color: "#000000",
-                              borderRadius: "12px 12px 4px 12px",
-                            }
-                          : {
-                              backgroundColor: "rgba(255, 255, 255, 0.05)",
-                              border: "1px solid rgba(255, 255, 255, 0.08)",
-                              borderRadius: "12px 12px 12px 4px",
-                            }
-                      }
-                    >
-                      {msg.role === "user" ? (
-                        <p
-                          className="text-sm leading-relaxed"
-                          style={{
-                            fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                          }}
-                        >
-                          {getMessageText(msg)}
-                        </p>
-                      ) : (
-                        <Renderer
-                          response={getMessageText(msg)}
-                          library={library}
-                          isStreaming={isLoading && msg.id === messages[messages.length - 1]?.id}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div
-                      className="px-5 py-4"
-                      style={{
-                        backgroundColor: "rgba(255, 255, 255, 0.05)",
-                        border: "1px solid rgba(255, 255, 255, 0.08)",
-                        borderRadius: "12px 12px 12px 4px",
-                      }}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {[0, 150, 300].map((delay) => (
-                          <div
-                            key={delay}
-                            className="w-1.5 h-1.5 rounded-full animate-bounce"
-                            style={{
-                              backgroundColor: "#22d3ee",
-                              animationDelay: `${delay}ms`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {error && (
-                  <div className="flex justify-start">
-                    <div
-                      className="px-5 py-3"
-                      style={{
-                        backgroundColor: "rgba(239, 68, 68, 0.1)",
-                        border: "1px solid rgba(239, 68, 68, 0.3)",
-                        borderRadius: "12px 12px 12px 4px",
-                      }}
-                    >
-                      <p
-                        className="text-sm"
-                        style={{
-                          fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                          color: "rgba(239, 68, 68, 0.9)",
-                        }}
-                      >
-                        {error.message || "Something went wrong. Please try again."}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div
-          className="px-12 lg:px-20 py-6"
-          style={{ borderTop: "1px solid rgba(255, 255, 255, 0.05)" }}
-        >
-          <form onSubmit={handleFormSubmit} className="max-w-2xl mx-auto">
-            <div
-              className="flex items-center gap-3 px-5 py-4 transition-all duration-300"
-              style={{
-                backgroundColor: "rgba(255, 255, 255, 0.03)",
-                border: "1px solid rgba(255, 255, 255, 0.08)",
-                borderRadius: "8px",
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.2)";
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
-                e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.03)";
-              }}
-            >
-              <input
-                ref={inputRef}
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask about shipping routes, ports, carriers..."
-                disabled={isLoading}
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-500 disabled:opacity-50"
-                style={{
-                  fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                  color: "#ffffff",
-                }}
-              />
-              <button
-                type="submit"
-                disabled={!input.trim() || isLoading}
-                className="p-2 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
-                style={{
-                  backgroundColor: input.trim() && !isLoading ? "#22d3ee" : "transparent",
-                  color: input.trim() && !isLoading ? "#000000" : "#71717a",
-                  borderRadius: "6px",
-                }}
-              >
-                <Send className="w-4 h-4" strokeWidth={2} />
-              </button>
-            </div>
-          </form>
-        </div>
+        <ChatPanel
+          messages={messages}
+          input={input}
+          setInput={setInput}
+          isLoading={isLoading}
+          error={error}
+          inputRef={inputRef}
+          handleFormSubmit={handleFormSubmit}
+          handleSuggestion={handleSuggestion}
+          messagesEndRef={messagesEndRef}
+        />
       )}
     </>
   );
 }
-
 
 export default function ChatPage() {
   return (
