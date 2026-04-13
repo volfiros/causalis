@@ -764,6 +764,7 @@ function ChatContent() {
   );
 }
 
+
 export default function ChatPage() {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">

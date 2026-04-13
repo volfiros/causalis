@@ -8,6 +8,13 @@ import { Menus } from "./Menus";
 import { PinDetails } from "./PinDetails";
 import { FilterControls } from "./FilterControls";
 import { FullscreenToggle } from "./FullscreenToggle";
+import { ImpactStatsCard } from "./ImpactStatsCard";
+import { CarrierTableCard } from "./CarrierTableCard";
+import { PortCard } from "./PortCard";
+import { RouteCard } from "./RouteCard";
+import { GlobeVersionCard } from "./GlobeVersionCard";
+
+export { ImpactStatsCard, CarrierTableCard, PortCard, RouteCard, GlobeVersionCard };
 
 export interface EntityInfo {
   id: string;
