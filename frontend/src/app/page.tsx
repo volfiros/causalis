@@ -96,10 +96,10 @@ export default function HomePage() {
       <div
         style={{
           position: "absolute",
-          top: "-10%",
-          right: "-15%",
-          width: "75%",
-          height: "120%",
+          top: "-5%",
+          right: "-5%",
+          width: "65%",
+          height: "110%",
           zIndex: 0,
         }}
       >
