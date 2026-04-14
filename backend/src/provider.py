@@ -1,6 +1,11 @@
 import json
 import os
+import warnings
 from pathlib import Path
+
+warnings.filterwarnings("ignore", message=".*urllib3 v2 only supports OpenSSL.*")
+warnings.filterwarnings("ignore", category=FutureWarning, module="google")
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
