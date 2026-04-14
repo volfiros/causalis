@@ -302,10 +302,6 @@ function Globe({
     elapsed.current += delta;
     const t = elapsed.current;
 
-    if (autoRotate && groupRef.current) {
-      groupRef.current.rotation.y = t * 0.06;
-    }
-
     if (glowMeshes.current && glowPositions.length > 0) {
       const dummy = new THREE.Object3D();
       for (let i = 0; i < glowPositions.length; i++) {
@@ -402,7 +398,7 @@ function Globe({
         enableZoom={false}
         minDistance={8}
         maxDistance={18}
-        autoRotate={false}
+        autoRotate={autoRotate}
         autoRotateSpeed={0.5}
         target={[0, 0, 0]}
       />

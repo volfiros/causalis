@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import SideGlobe from "@/components/SideGlobe";
 
@@ -90,6 +90,11 @@ function LineReveal({ delay = 0 }: { delay?: number }) {
 
 export default function HomePage() {
   const router = useRouter();
+  const [selectedChokepointId, setSelectedChokepointId] = useState<string | null>(null);
+
+  const handlePinClick = useCallback((pinId: string | null) => {
+    setSelectedChokepointId(pinId === selectedChokepointId ? null : pinId);
+  }, [selectedChokepointId]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
@@ -103,7 +108,11 @@ export default function HomePage() {
           zIndex: 0,
         }}
       >
-        <SideGlobe autoRotate={true} showOnlyChokepoints={true} />
+        <SideGlobe
+          showOnlyChokepoints={true}
+          selectedPinId={selectedChokepointId}
+          onPinClick={handlePinClick}
+        />
       </div>
 
       <div className="absolute inset-0 pointer-events-none">
