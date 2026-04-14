@@ -8,7 +8,7 @@ import { fetchSpatialData, getAllPorts, getAllChokepoints, getAllRoutes, Spatial
 import { buildArcGeometry, ArcData, computeArcsFromRoutes } from "@/lib/arc-utils";
 import { emitGlobeEvent } from "@/lib/globe-events";
 
-const R = 4;
+const R = 3;
 
 function latLng(lat: number, lng: number, r: number) {
   const phi = (90 - lat) * (Math.PI / 180);
