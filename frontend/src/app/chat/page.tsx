@@ -97,9 +97,9 @@ function OpenUIRenderer({
 }
 
 const SUGGESTIONS = [
-  "What if Suez Canal is blocked?",
-  "Which carriers are most exposed to Red Sea risk?",
-  "How does a Panama disruption affect US retail?",
+  "Simulate a full closure of the Suez Canal",
+  "What happens if the Strait of Hormuz is blocked?",
+  "Model a disruption at the Panama Canal",
 ];
 
 function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
