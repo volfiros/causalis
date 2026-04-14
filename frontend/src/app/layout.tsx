@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Outfit, JetBrains_Mono } from "next/font/google";
-import WakeUpOverlay from "@/components/WakeUpOverlay";
 import "./globals.css";
 
 const outfit = Outfit({
@@ -46,8 +45,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={`${outfit.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
-        <WakeUpOverlay />
-        {children}
+{children}
       </body>
     </html>
   );
