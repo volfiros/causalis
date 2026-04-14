@@ -387,6 +387,15 @@ function Globe({
           <meshBasicMaterial color="#22d3ee" transparent opacity={0.02} side={THREE.BackSide} />
         </mesh>
       </group>
+
+      <OrbitControls
+        enablePan={false}
+        enableZoom={false}
+        minDistance={8}
+        maxDistance={15}
+        autoRotate={autoRotate}
+        autoRotateSpeed={0.5}
+      />
     </>
   );
 }
