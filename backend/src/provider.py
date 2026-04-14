@@ -43,12 +43,7 @@ _kb = None
 
 @app.on_event("startup")
 async def startup():
-    print("[provider] FastAPI app starting up...")
-    try:
-        _get_world()
-        print("[provider] World model initialized successfully")
-    except Exception as e:
-        print(f"[provider] World model initialization failed (will retry on first request): {e}")
+    print("[provider] FastAPI app started. Heavy models will load on first request.")
 
 
 def _get_world():
@@ -170,6 +165,11 @@ async def chat_stream(request: ChatRequest):
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "service": "causalis"}
 
 
 @app.get("/v1/spatial/ports")
