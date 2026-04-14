@@ -328,7 +328,7 @@ function Globe({
       <directionalLight position={[10, 8, 10]} intensity={1.2} />
       <pointLight position={[-8, 0, -8]} intensity={0.3} color="#22d3ee" />
 
-      <group ref={groupRef}>
+      <group ref={groupRef} position={[0, 0.6, 0]}>
         <mesh>
           <sphereGeometry args={[R, 48, 48]} />
           <meshBasicMaterial color="#0a0a1a" />
@@ -449,7 +449,7 @@ export default function SideGlobe({
   return (
     <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)", pointerEvents: "auto" }}>
       <Canvas
-        camera={{ position: [-1, -2, 12], fov: 45 }}
+        camera={{ position: [-1, 0, 12], fov: 45 }}
         dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {
