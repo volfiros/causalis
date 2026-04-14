@@ -1,3 +1,12 @@
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+os.environ["CHROMADB_TELEMETRY"] = "False"
+
+import warnings
+warnings.filterwarnings("ignore", message=".*urllib3.*")
+warnings.filterwarnings("ignore", message=".*capture.*")
+
 from chromadb.api.types import EmbeddingFunction
 from chromadb.types import Metadata
 from pathlib import Path

@@ -4,7 +4,13 @@ import warnings
 from pathlib import Path
 
 warnings.filterwarnings("ignore", message=".*urllib3 v2 only supports OpenSSL.*")
+warnings.filterwarnings("ignore", message=".*urllib3.*")
 warnings.filterwarnings("ignore", category=FutureWarning, module="google")
+warnings.filterwarnings("ignore", message=".*capture.*")
+
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+os.environ["CHROMA_TELEMETRY"] = "False"
+os.environ["CHROMADB_TELEMETRY"] = "False"
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
