@@ -28,9 +28,19 @@ if (fs.existsSync(rootEnvPath)) {
   }
 }
 
+const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+
 const nextConfig: NextConfig = {
   env: {
-    BACKEND_URL: process.env.BACKEND_URL,
+    BACKEND_URL: backendUrl,
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/chat/stream",
+        destination: `${backendUrl}/v1/chat/stream`,
+      },
+    ];
   },
 };
 
