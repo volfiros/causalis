@@ -97,8 +97,8 @@ export default function HomePage() {
         style={{
           position: "absolute",
           top: "-5%",
-          right: "-5%",
-          width: "65%",
+          right: "5%",
+          width: "60%",
           height: "110%",
           zIndex: 0,
         }}
