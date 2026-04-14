@@ -37,13 +37,28 @@ class RendererErrorBoundary extends Component<{ fallback: ReactNode; children: R
 
 function sanitizeOpenUIResponse(response: string): string {
   let text = response.trim();
+  
+  // Extract from markdown code blocks
   const codeBlockMatch = text.match(/```(?:openui|openui-lang)?\n([\s\S]*?)```/);
   if (codeBlockMatch) text = codeBlockMatch[1].trim();
-  if (!text.startsWith("root =")) {
+  
+  // Find root = Stack( even with indentation
+  if (!text.match(/^root\s*=/m)) {
     const rootMatch = text.match(/(root\s*=\s*Stack\([\s\S]*)/);
     if (rootMatch) text = rootMatch[1];
   }
-  return text;
+  
+  // Normalize indentation - remove common leading whitespace
+  const lines = text.split('\n');
+  const nonEmptyLines = lines.filter(l => l.trim());
+  if (nonEmptyLines.length > 1) {
+    const minIndent = Math.min(...nonEmptyLines.map(l => l.match(/^(\s*)/)?.[1].length ?? 0));
+    if (minIndent > 0) {
+      text = lines.map(l => l.slice(minIndent)).join('\n');
+    }
+  }
+  
+  return text.trim();
 }
 
 function extractTextFromOpenUI(text: string): string {
@@ -73,12 +88,28 @@ function OpenUIRenderer({
   library: Library;
   isStreaming: boolean;
 }) {
-  const [parseState, setParseState] = useState<"parsing" | "success" | "failed">("parsing");
+  const [parseState, setParseState] = useState<"idle" | "success" | "failed">("idle");
   const sanitized = useMemo(() => sanitizeOpenUIResponse(response), [response]);
 
+  // Only evaluate final parse result when streaming completes
   useEffect(() => {
-    setParseState("parsing");
-  }, [response]);
+    if (!isStreaming && parseState === "idle") {
+      // Defer to let Renderer complete its parsing
+      const timer = setTimeout(() => {
+        // Check if response looks like valid OpenUI
+        const looksLikeOpenUI = sanitized.match(/^root\s*=\s*Stack\s*\(/);
+        if (!looksLikeOpenUI) {
+          setParseState("failed");
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isStreaming, parseState, sanitized]);
+
+  // Reset state when response changes completely (new message)
+  useEffect(() => {
+    setParseState("idle");
+  }, [response.length === 0]);
 
   const fallback = (
     <p
@@ -93,27 +124,23 @@ function OpenUIRenderer({
     </p>
   );
 
-  if (parseState === "failed") {
+  // Show raw response while streaming or if failed
+  if (isStreaming || parseState === "failed") {
     return <>{fallback}</>;
   }
 
   return (
     <RendererErrorBoundary fallback={fallback}>
-      {parseState !== "success" && (
-        <div style={{ opacity: 0.6 }}>{fallback}</div>
-      )}
-      <div style={parseState === "success" ? undefined : { position: "absolute", opacity: 0, pointerEvents: "none" }}>
-        <Renderer
-          response={sanitized}
-          library={library}
-          isStreaming={isStreaming}
-          onError={() => {}}
-          onParseResult={(result) => {
-            const hasValidRoot = !!result?.root;
-            setParseState(hasValidRoot ? "success" : "failed");
-          }}
-        />
-      </div>
+      <Renderer
+        response={sanitized}
+        library={library}
+        isStreaming={false}
+        onError={() => setParseState("failed")}
+        onParseResult={(result) => {
+          const hasValidRoot = !!result?.root;
+          if (hasValidRoot) setParseState("success");
+        }}
+      />
     </RendererErrorBoundary>
   );
 }
