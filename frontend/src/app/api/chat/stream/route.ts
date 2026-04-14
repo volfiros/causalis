@@ -1,9 +1,34 @@
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { messages } = await req.json();
-  const userMessage = messages?.[messages.length - 1]?.content ?? "";
-  console.log(`[api/chat/stream] Incoming message: ${userMessage.slice(0, 100)}`);
+  const body = await req.json();
+  const { messages } = body;
+  const userMessage = messages?.[messages.length - 1];
+  console.log(`[api/chat/stream] Last message:`, JSON.stringify(userMessage, null, 2));
+  console.log(`[api/chat/stream] Message keys:`, Object.keys(userMessage || {}));
+  const content = userMessage?.content || userMessage?.text || "";
+  // AI SDK may send parts array instead of content string
+  let messageContent = content;
+  if (!messageContent && userMessage?.parts) {
+    messageContent = userMessage.parts
+      ?.filter((p: any) => p.type === 'text' && typeof p.text === 'string')
+      ?.map((p: any) => p.text)
+      ?.join('') || '';
+  }
+  console.log(`[api/chat/stream] Extracted content: ${messageContent.slice(0, 100)}`);
+
+  // Reconstruct messages with proper content field for the Python backend
+  const normalizedMessages = messages.map((msg: any) => {
+    let msgContent = msg.content || '';
+    if (!msgContent && msg.parts) {
+      msgContent = msg.parts
+        ?.filter((p: any) => p.type === 'text' && typeof p.text === 'string')
+        ?.map((p: any) => p.text)
+        ?.join('') || '';
+    }
+    return { role: msg.role, content: msgContent };
+  });
+  console.log(`[api/chat/stream] Normalized last message: ${normalizedMessages[normalizedMessages.length - 1]?.content?.slice(0, 100)}`);
 
   const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
   console.log(`[api/chat/stream] Proxying to: ${backendUrl}/v1/chat/stream`);
@@ -13,7 +38,7 @@ export async function POST(req: Request) {
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages: normalizedMessages }),
   });
 
   console.log(`[api/chat/stream] Backend responded: ${response.status} ${response.statusText}`);
