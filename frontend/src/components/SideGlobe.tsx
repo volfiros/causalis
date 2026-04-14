@@ -210,14 +210,14 @@ function Globe({
 
   const backgroundArcGeos = useMemo(() => {
     return backgroundArcs.map(arc => ({
-      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.15, 24),
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.25, 32),
       routeId: arc.routeId,
     }));
   }, [backgroundArcs]);
 
   const affectedArcGeos = useMemo(() => {
     return affectedArcs.map(arc => ({
-      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.15, 24),
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.25, 32),
       routeId: arc.routeId,
     }));
   }, [affectedArcs]);

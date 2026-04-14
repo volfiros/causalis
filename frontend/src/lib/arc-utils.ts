@@ -24,14 +24,24 @@ function latLng(lat: number, lng: number, r: number) {
   );
 }
 
+const MIN_ALTITUDE = R * 1.005;
+
+function clampAboveSurface(point: THREE.Vector3): THREE.Vector3 {
+  const len = point.length();
+  if (len < MIN_ALTITUDE) {
+    return point.clone().normalize().multiplyScalar(MIN_ALTITUDE);
+  }
+  return point;
+}
+
 export function buildArcGeometry(
   start: [number, number],
   end: [number, number],
-  arcHeight: number = R * 1.15,
-  segments: number = 24
+  arcHeight: number = R * 1.25,
+  segments: number = 32
 ): THREE.BufferGeometry {
-  const startVec = latLng(start[0], start[1], R * 1.005);
-  const endVec = latLng(end[0], end[1], R * 1.005);
+  const startVec = latLng(start[0], start[1], MIN_ALTITUDE);
+  const endVec = latLng(end[0], end[1], MIN_ALTITUDE);
 
   const mid = new THREE.Vector3().addVectors(startVec, endVec).multiplyScalar(0.5);
   mid.normalize().multiplyScalar(arcHeight);
@@ -41,10 +51,9 @@ export function buildArcGeometry(
 
   const positions: number[] = [];
   for (let i = 0; i < points.length - 1; i++) {
-    positions.push(
-      points[i].x, points[i].y, points[i].z,
-      points[i + 1].x, points[i + 1].y, points[i + 1].z
-    );
+    const p0 = clampAboveSurface(points[i]);
+    const p1 = clampAboveSurface(points[i + 1]);
+    positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z);
   }
 
   const geometry = new THREE.BufferGeometry();
