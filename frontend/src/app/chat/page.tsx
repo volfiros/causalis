@@ -47,6 +47,24 @@ function sanitizeOpenUIResponse(response: string): string {
   return text;
 }
 
+function extractTextFromOpenUI(text: string): string {
+  if (!text.includes("TextBlock") && !text.includes("root =") && !text.includes("=")) {
+    return text;
+  }
+  const texts: string[] = [];
+  const textBlockRegex = /TextBlock\(text\s*=\s*"((?:[^"\\]|\\.)*)"\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = textBlockRegex.exec(text)) !== null) {
+    texts.push(match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'));
+  }
+  if (texts.length > 0) return texts.join("\n\n");
+  const stringLiterals = text.match(/"((?:[^"\\]|\\.)*)"/g);
+  if (stringLiterals && stringLiterals.length > 0) {
+    return stringLiterals.map(s => s.slice(1, -1).replace(/\\n/g, "\n").replace(/\\"/g, '"')).join(" ");
+  }
+  return text;
+}
+
 function OpenUIRenderer({
   response,
   library,
@@ -556,7 +574,7 @@ function ChatPanel({
                               whiteSpace: "pre-wrap",
                             }}
                           >
-                            {getMessageText(msg)}
+                            {extractTextFromOpenUI(getMessageText(msg))}
                           </p>
                         }
                       />
