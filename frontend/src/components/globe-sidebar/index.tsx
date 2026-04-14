@@ -54,6 +54,11 @@ function DropdownSection({
   onToggle: () => void;
   children: React.ReactNode;
 }) {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggle();
+  };
+
   return (
     <div
       style={{
@@ -69,7 +74,7 @@ function DropdownSection({
       }}
     >
       <button
-        onClick={onToggle}
+        onClick={handleClick}
         style={{
           width: "100%",
           display: "flex",
@@ -99,14 +104,16 @@ function DropdownSection({
           <ChevronDown className="w-4 h-4" style={{ color: "rgba(255, 255, 255, 0.5)" }} />
         )}
       </button>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {isOpen && (
           <motion.div
+            key={`${title}-content`}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
             style={{ overflow: "hidden" }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div style={{ padding: "0 16px 16px" }}>{children}</div>
           </motion.div>
@@ -234,7 +241,10 @@ export function GlobeSidebar({
         <DropdownSection
           title="Active Scenarios"
           isOpen={scenariosOpen}
-          onToggle={() => setScenariosOpen(!scenariosOpen)}
+          onToggle={() => {
+            setScenariosOpen(!scenariosOpen);
+            setCarriersOpen(false);
+          }}
         >
           <Menus
             entityInfos={entityInfos}
@@ -249,7 +259,10 @@ export function GlobeSidebar({
         <DropdownSection
           title="Carriers"
           isOpen={carriersOpen}
-          onToggle={() => setCarriersOpen(!carriersOpen)}
+          onToggle={() => {
+            setCarriersOpen(!carriersOpen);
+            setScenariosOpen(false);
+          }}
         >
           <CarrierTableCard carriers={SAMPLE_CARRIERS} />
         </DropdownSection>
