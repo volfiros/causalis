@@ -138,8 +138,11 @@ export function GlobeSidebar({
   highlightedRouteIds = [],
   onPinClick,
 }: GlobeSidebarProps) {
-  const [scenariosOpen, setScenariosOpen] = useState(false);
-  const [carriersOpen, setCarriersOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  const toggleDropdown = (id: string) => {
+    setOpenDropdown((current) => current === id ? null : id);
+  };
 
   if (!isOpen || !globeState) return null;
 
@@ -230,11 +233,8 @@ export function GlobeSidebar({
         <DropdownSection
           id="scenarios-dropdown"
           title="Active Scenarios"
-          isOpen={scenariosOpen}
-          onToggle={() => {
-            setScenariosOpen(!scenariosOpen);
-            setCarriersOpen(false);
-          }}
+          isOpen={openDropdown === "scenarios"}
+          onToggle={() => toggleDropdown("scenarios")}
         >
           <Menus
             entityInfos={entityInfos}
@@ -249,11 +249,8 @@ export function GlobeSidebar({
         <DropdownSection
           id="carriers-dropdown"
           title="Carriers"
-          isOpen={carriersOpen}
-          onToggle={() => {
-            setCarriersOpen(!carriersOpen);
-            setScenariosOpen(false);
-          }}
+          isOpen={openDropdown === "carriers"}
+          onToggle={() => toggleDropdown("carriers")}
         >
           <CarrierTableCard carriers={SAMPLE_CARRIERS} />
         </DropdownSection>
