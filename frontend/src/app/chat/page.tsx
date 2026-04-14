@@ -68,26 +68,49 @@ function OpenUIRenderer({
   response,
   library,
   isStreaming,
-  fallback,
 }: {
   response: string;
   library: Library;
   isStreaming: boolean;
-  fallback: ReactNode;
 }) {
-  const [hasRoot, setHasRoot] = useState(false);
+  const [parseState, setParseState] = useState<"parsing" | "success" | "failed">("parsing");
   const sanitized = useMemo(() => sanitizeOpenUIResponse(response), [response]);
+
+  useEffect(() => {
+    setParseState("parsing");
+  }, [response]);
+
+  const fallback = (
+    <p
+      className="text-sm leading-relaxed"
+      style={{
+        fontFamily: "var(--font-outfit), system-ui, sans-serif",
+        color: "rgba(255, 255, 255, 0.9)",
+        whiteSpace: "pre-wrap",
+      }}
+    >
+      {parseState === "failed" ? extractTextFromOpenUI(response) : response}
+    </p>
+  );
+
+  if (parseState === "failed") {
+    return <>{fallback}</>;
+  }
+
   return (
     <RendererErrorBoundary fallback={fallback}>
-      {hasRoot ? null : fallback}
-      <div style={hasRoot ? undefined : { display: "none" }}>
+      {parseState !== "success" && (
+        <div style={{ opacity: 0.6 }}>{fallback}</div>
+      )}
+      <div style={parseState === "success" ? undefined : { position: "absolute", opacity: 0, pointerEvents: "none" }}>
         <Renderer
           response={sanitized}
           library={library}
           isStreaming={isStreaming}
           onError={() => {}}
           onParseResult={(result) => {
-            setHasRoot(!!result?.root);
+            const hasValidRoot = !!result?.root;
+            setParseState(hasValidRoot ? "success" : "failed");
           }}
         />
       </div>
@@ -505,18 +528,6 @@ function ChatPanel({
                         response={getMessageText(msg)}
                         library={library}
                         isStreaming={isLoading && msg.id === messages[messages.length - 1]?.id}
-                        fallback={
-                          <p
-                            className="text-sm leading-relaxed"
-                            style={{
-                              fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                              color: "rgba(255, 255, 255, 0.9)",
-                              whiteSpace: "pre-wrap",
-                            }}
-                          >
-                            {extractTextFromOpenUI(getMessageText(msg))}
-                          </p>
-                        }
                       />
                     )}
                   </div>
