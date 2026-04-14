@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Send, Globe, ChevronDown, ChevronUp } from "lucide-react";
@@ -53,43 +53,42 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
 function GlobeNavButton({
   version,
   isOpen,
+  hasGlobe,
   onClick,
 }: {
   version: number;
   isOpen: boolean;
+  hasGlobe: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={!hasGlobe}
       style={{
-        position: "fixed",
-        top: "20px",
-        right: isOpen ? "340px" : "20px",
-        zIndex: 30,
         display: "flex",
         alignItems: "center",
         gap: "8px",
-        padding: "10px 14px",
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
-        border: `1px solid ${isOpen ? "rgba(34, 211, 238, 0.5)" : "rgba(255, 255, 255, 0.08)"}`,
-        borderRadius: "8px",
-        cursor: "pointer",
+        padding: "8px 12px",
+        backgroundColor: isOpen ? "rgba(34, 211, 238, 0.15)" : "rgba(255, 255, 255, 0.03)",
+        border: `1px solid ${isOpen ? "rgba(34, 211, 238, 0.5)" : hasGlobe ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.05)"}`,
+        borderRadius: "6px",
+        cursor: hasGlobe ? "pointer" : "not-allowed",
         transition: "all 300ms ease",
-        boxShadow: isOpen ? "0 0 20px rgba(34, 211, 238, 0.3)" : "none",
+        opacity: hasGlobe ? 1 : 0.4,
       }}
     >
       <Globe
-        className="w-5 h-5"
-        style={{ color: isOpen ? "#22d3ee" : "rgba(255, 255, 255, 0.7)" }}
+        className="w-4 h-4"
+        style={{ color: isOpen ? "#22d3ee" : hasGlobe ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.3)" }}
       />
       {version > 0 && (
         <span
           style={{
             fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "11px",
+            fontSize: "10px",
             fontWeight: 600,
-            color: isOpen ? "#22d3ee" : "rgba(255, 255, 255, 0.7)",
+            color: isOpen ? "#22d3ee" : hasGlobe ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.3)",
             letterSpacing: "0.05em",
           }}
         >
@@ -350,6 +349,10 @@ function ChatPanel({
   handleFormSubmit,
   handleSuggestion,
   messagesEndRef,
+  isSidebarOpen,
+  globeVersion,
+  hasGlobe,
+  onToggleSidebar,
 }: {
   messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>;
   input: string;
@@ -360,9 +363,18 @@ function ChatPanel({
   handleFormSubmit: (e: React.FormEvent) => void;
   handleSuggestion: (text: string) => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
+  isSidebarOpen: boolean;
+  globeVersion: number;
+  hasGlobe: boolean;
+  onToggleSidebar: () => void;
 }) {
   return (
-    <div className="relative z-10 flex flex-col h-full">
+    <div 
+      className="relative z-10 flex flex-col h-full transition-all duration-300 ease-in-out"
+      style={{
+        marginRight: isSidebarOpen ? "320px" : "0",
+      }}
+    >
       <header
         className="px-12 lg:px-20 py-5 flex items-center justify-between"
         style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}
@@ -376,15 +388,23 @@ function ChatPanel({
         >
           Causalis
         </p>
-        <p
-          className="text-[11px] tracking-[0.15em] uppercase"
-          style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            color: "rgba(255, 255, 255, 0.2)",
-          }}
-        >
-          Session Active
-        </p>
+        <div className="flex items-center gap-4">
+          <p
+            className="text-[11px] tracking-[0.15em] uppercase"
+            style={{
+              fontFamily: "var(--font-mono), ui-monospace, monospace",
+              color: "rgba(255, 255, 255, 0.2)",
+            }}
+          >
+            Session Active
+          </p>
+          <GlobeNavButton
+            version={globeVersion}
+            isOpen={isSidebarOpen}
+            hasGlobe={hasGlobe}
+            onClick={onToggleSidebar}
+          />
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto">
@@ -596,13 +616,10 @@ function ChatContent() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isChatExpanded, setIsChatExpanded] = useState(true);
-  const [dataInitialized, setDataInitialized] = useState(false);
   const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
-  const [entityInfos, setEntityInfos] = useState<EntityInfo[]>([]);
   const [ports, setPorts] = useState<SpatialPort[]>([]);
   const [chokepoints, setChokepoints] = useState<SpatialChokepoint[]>([]);
   const [routes, setRoutes] = useState<SpatialRoute[]>([]);
-  const [highlightedRouteIds, setHighlightedRouteIds] = useState<string[]>([]);
   const clientVersionRef = useRef(0);
   const previousEntitiesRef = useRef<Set<string>>(new Set());
 
@@ -622,16 +639,12 @@ function ChatContent() {
         setPorts(getAllPorts());
         setChokepoints(getAllChokepoints());
         setRoutes(getAllRoutes());
-        setDataInitialized(true);
       })
       .catch((err) => console.error("Failed to initialize spatial data:", err));
   }, []);
 
-  useEffect(() => {
-    if (!globeState) {
-      setEntityInfos([]);
-      return;
-    }
+  const entityInfos = useMemo(() => {
+    if (!globeState) return [];
 
     const infos: EntityInfo[] = [];
     for (const entityId of globeState.entities) {
@@ -645,7 +658,7 @@ function ChatContent() {
         infos.push({ id: entityId, name: chokepoint.name, type: "chokepoint" });
       }
     }
-    setEntityInfos(infos);
+    return infos;
   }, [globeState]);
 
   useEffect(() => {
@@ -678,18 +691,16 @@ function ChatContent() {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    if (selectedPinId) {
-      const routesInvolving = routes.filter(
+  const highlightedRouteIds = useMemo(() => {
+    if (!selectedPinId) return [];
+    return routes
+      .filter(
         (r) =>
           r.chokepoints_transited.includes(selectedPinId) ||
           r.origin_port_id === selectedPinId ||
           r.destination_port_id === selectedPinId
-      );
-      setHighlightedRouteIds(routesInvolving.map((r) => r.id));
-    } else {
-      setHighlightedRouteIds([]);
-    }
+      )
+      .map((r) => r.id);
   }, [selectedPinId, routes]);
 
   const scrollToBottom = () => {
@@ -722,7 +733,6 @@ function ChatContent() {
 
   const handleClearFilters = () => {
     setSelectedPinId(null);
-    setHighlightedRouteIds([]);
   };
 
   const highlightedEntities = globeState?.entities ?? [];
@@ -737,12 +747,6 @@ function ChatContent() {
         selectedPinId={selectedPinId}
         onPinClick={setSelectedPinId}
         dpr={dpr}
-      />
-
-      <GlobeNavButton
-        version={currentVersion}
-        isOpen={isSidebarOpen}
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
       />
 
       <GlobeSidebar
@@ -796,6 +800,10 @@ function ChatContent() {
           handleFormSubmit={handleFormSubmit}
           handleSuggestion={handleSuggestion}
           messagesEndRef={messagesEndRef}
+          isSidebarOpen={isSidebarOpen}
+          globeVersion={currentVersion}
+          hasGlobe={globeState !== null}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
       )}
     </>

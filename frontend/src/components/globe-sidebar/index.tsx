@@ -14,6 +14,16 @@ import { PortCard } from "./PortCard";
 import { RouteCard } from "./RouteCard";
 import { GlobeVersionCard } from "./GlobeVersionCard";
 
+// Sample carrier data - in production this would come from the API
+const SAMPLE_CARRIERS = [
+  { name: "Maersk", exposure: 0.85 },
+  { name: "MSC", exposure: 0.72 },
+  { name: "CMA CGM", exposure: 0.65 },
+  { name: "COSCO", exposure: 0.58 },
+  { name: "Hapag-Lloyd", exposure: 0.45 },
+  { name: "ONE", exposure: 0.38 },
+];
+
 export { ImpactStatsCard, CarrierTableCard, PortCard, RouteCard, GlobeVersionCard };
 
 export interface EntityInfo {
@@ -118,6 +128,20 @@ export function GlobeSidebar({
           </div>
 
           <VersionPanel version={globeState.version} />
+
+          <ImpactStatsCard
+            vessels={globeState.entities.length * 45 + 120}
+            routes={routes.filter(r => 
+              globeState.entities.some(e => 
+                r.chokepoints_transited.includes(e) ||
+                r.origin_port_id === e ||
+                r.destination_port_id === e
+              )
+            ).length}
+            costUsd={globeState.entities.length * 25000000 + 150000000}
+          />
+
+          <CarrierTableCard carriers={SAMPLE_CARRIERS} />
 
           <PinDetails
             selectedPort={selectedPort}

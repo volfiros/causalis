@@ -15,8 +15,6 @@ export function GlobeVersionCard({
   vesselsAffected,
   onViewOnGlobe,
 }: GlobeVersionCardProps) {
-  const totalEntities = affectedChokepoints.length + affectedPorts.length;
-
   return (
     <div
       style={{
