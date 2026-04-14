@@ -105,7 +105,7 @@ export default function HomePage() {
           right: "5%",
           width: "60%",
           height: "110%",
-          zIndex: 0,
+          zIndex: 20,
         }}
       >
         <SideGlobe
@@ -115,7 +115,7 @@ export default function HomePage() {
         />
       </div>
 
-      <div className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
         <div
           className="h-full w-full"
           style={{
@@ -125,7 +125,7 @@ export default function HomePage() {
         />
       </div>
 
-      <div className="relative z-10 flex flex-col justify-between h-full px-12 lg:px-20 py-16">
+      <div className="relative flex flex-col justify-between h-full px-12 lg:px-20 py-16" style={{ zIndex: 10, position: "relative", pointerEvents: "none" }}>
         <div />
 
         <div className="max-w-2xl">
@@ -186,7 +186,7 @@ export default function HomePage() {
             <button
               onClick={() => router.push("/chat")}
               className="mt-12 group relative inline-flex items-center gap-3 pl-8 pr-6 py-4 bg-white text-black text-sm font-semibold tracking-wide overflow-hidden transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98]"
-              style={{ borderRadius: "6px" }}
+              style={{ borderRadius: "6px", pointerEvents: "auto" }}
             >
               <span>Begin Session</span>
               <svg
