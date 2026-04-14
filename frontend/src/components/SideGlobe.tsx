@@ -393,9 +393,9 @@ function Globe({
         enableZoom={false}
         minDistance={8}
         maxDistance={18}
-        autoRotate={autoRotate}
+        autoRotate={false}
         autoRotateSpeed={0.5}
-        target={[0, 0.6, 0]}
+        target={[0, 0, 0]}
       />
     </>
   );
@@ -450,7 +450,7 @@ export default function SideGlobe({
   return (
     <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)", pointerEvents: "auto" }}>
       <Canvas
-        camera={{ position: [-1, 0, 12], fov: 45 }}
+        camera={{ position: [-1, 1.2, 12], fov: 45 }}
         dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {
