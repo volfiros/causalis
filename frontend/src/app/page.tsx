@@ -93,7 +93,18 @@ export default function HomePage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
-      <SideGlobe autoRotate={true} />
+      <div
+        style={{
+          position: "absolute",
+          top: "-10%",
+          right: "-15%",
+          width: "75%",
+          height: "120%",
+          zIndex: 0,
+        }}
+      >
+        <SideGlobe autoRotate={true} />
+      </div>
 
       <div className="absolute inset-0 pointer-events-none">
         <div
