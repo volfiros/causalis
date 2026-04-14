@@ -202,6 +202,44 @@ async def get_routes():
     return {"routes": routes}
 
 
+@app.get("/v1/simulate")
+async def simulate(chokepoints: str = "", severity: str = "full"):
+    """Run a disruption simulation for given chokepoints."""
+    if not chokepoints:
+        return {
+            "scenario": {"chokepoints": [], "severity": severity, "affected_vessels": 0},
+            "affected_routes": [],
+            "carriers": [],
+            "rerouting": {"alternatives": []},
+            "port_congestion": [],
+            "cascade": {"impact_timeline": []},
+        }
+
+    cp_list = [c.strip() for c in chokepoints.split(",") if c.strip()]
+    world, _, simulator, _ = _get_world()
+    simulation = simulator.run_scenario(cp_list, severity)
+
+    affected_routes = []
+    blocked_set = set(cp_list)
+    for _, route in world._routes.iterrows():
+        if set(route["chokepoints_transited"]) & blocked_set:
+            affected_routes.append({
+                "id": route["id"],
+                "name": route["name"],
+                "origin_port_id": route["origin_port_id"],
+                "destination_port_id": route["destination_port_id"],
+            })
+
+    return {
+        "scenario": simulation.scenario,
+        "affected_routes": affected_routes,
+        "carriers": simulation.carriers,
+        "rerouting": simulation.rerouting,
+        "port_congestion": simulation.port_congestion,
+        "cascade": simulation.cascade,
+    }
+
+
 @app.get("/v1/spatial/port/{port_id}")
 async def get_port(port_id: str):
     world, _, _, _ = _get_world()

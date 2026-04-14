@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Renderer, type Library } from "@openuidev/react-lang";
 import { library } from "@/lib/openui-library";
 import { GlobeEventPayload, subscribeToGlobeEvents } from "@/lib/globe-events";
+import { useSimulation } from "@/lib/use-simulation";
 import {
   getPortById,
   getChokepointById,
@@ -622,6 +623,15 @@ function ChatContent() {
 
   const highlightedEntities = globeState?.entities ?? [];
 
+  const simulationEntities = useMemo(() => {
+    return globeState?.entities?.filter(id => {
+      const cp = getChokepointById(id);
+      return cp !== null;
+    }) ?? [];
+  }, [globeState?.entities]);
+
+  const { data: simulationData, loading: simulationLoading } = useSimulation(simulationEntities, "full");
+
 
   return (
     <>
@@ -639,6 +649,8 @@ function ChatContent() {
         highlightedEntities={highlightedEntities}
         highlightedRouteIds={highlightedRouteIds}
         onPinClick={setSelectedPinId}
+        simulationData={simulationData}
+        simulationLoading={simulationLoading}
       />
 
       <ChatPanel

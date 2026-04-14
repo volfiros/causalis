@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
+import { SimulationData } from "@/lib/use-simulation";
 import { EntityInfo } from "./index";
 
 interface MenuSectionProps {
@@ -94,6 +95,7 @@ interface MenusProps {
   routes: SpatialRoute[];
   selectedEntityId?: string | null;
   onEntitySelect?: (entityId: string) => void;
+  simulationData?: SimulationData | null;
 }
 
 export function Menus({
@@ -103,6 +105,7 @@ export function Menus({
   routes,
   selectedEntityId,
   onEntitySelect,
+  simulationData,
 }: MenusProps) {
   const relevantPorts = ports.filter(p => entityInfos.some(e => e.id === p.id));
   const relevantChokepoints = chokepoints.filter(cp => entityInfos.some(e => e.id === cp.id));
@@ -111,6 +114,39 @@ export function Menus({
     <div style={{ marginTop: "16px", flex: 1, overflow: "auto" }}>
       <MenuSection title="Active Scenario" defaultExpanded={true}>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {simulationData?.scenario?.severity && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 12px",
+                backgroundColor: "rgba(255, 255, 255, 0.03)",
+                borderRadius: "6px",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-mono), ui-monospace, monospace",
+                  fontSize: "11px",
+                  color: "rgba(255, 255, 255, 0.5)",
+                }}
+              >
+                Severity
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "#a855f7",
+                  textTransform: "capitalize",
+                }}
+              >
+                {simulationData.scenario.severity}
+              </span>
+            </div>
+          )}
           <div
             style={{
               display: "flex",
@@ -168,7 +204,7 @@ export function Menus({
                 color: "#3b82f6",
               }}
             >
-              {routes.length}
+              {simulationData?.affected_routes?.length ?? routes.length}
             </span>
           </div>
         </div>

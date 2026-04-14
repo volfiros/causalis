@@ -1,10 +1,11 @@
 "use client";
 
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { GlobeEventPayload } from "@/lib/globe-events";
 import { SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
+import { SimulationData } from "@/lib/use-simulation";
 import SideGlobe from "@/components/SideGlobe";
 import { ImpactStatsCard } from "./ImpactStatsCard";
 import { CarrierTableCard } from "./CarrierTableCard";
@@ -32,16 +33,9 @@ interface GlobeSidebarProps {
   highlightedEntities?: string[];
   highlightedRouteIds?: string[];
   onPinClick?: (pinId: string | null) => void;
+  simulationData?: SimulationData | null;
+  simulationLoading?: boolean;
 }
-
-const SAMPLE_CARRIERS = [
-  { name: "Maersk", exposure: 0.85 },
-  { name: "MSC", exposure: 0.72 },
-  { name: "CMA CGM", exposure: 0.65 },
-  { name: "COSCO", exposure: 0.58 },
-  { name: "Hapag-Lloyd", exposure: 0.45 },
-  { name: "ONE", exposure: 0.38 },
-];
 
 function DropdownSection({
   id,
@@ -125,6 +119,8 @@ export function GlobeSidebar({
   highlightedEntities = [],
   highlightedRouteIds = [],
   onPinClick,
+  simulationData,
+  simulationLoading,
 }: GlobeSidebarProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
@@ -133,6 +129,12 @@ export function GlobeSidebar({
   };
 
   if (!isOpen || !globeState) return null;
+
+  const affectedVessels = simulationData?.scenario?.affected_vessels ?? 0;
+  const affectedRoutes = simulationData?.affected_routes?.length ?? 0;
+  const totalCost = simulationData?.carriers?.reduce(
+    (sum, c) => sum + c.estimated_daily_risk_usd, 0
+  ) ?? 0;
 
   return (
     <motion.div
@@ -234,6 +236,7 @@ export function GlobeSidebar({
             routes={routes}
             selectedEntityId={selectedEntityId}
             onEntitySelect={onEntitySelect}
+            simulationData={simulationData}
           />
         </DropdownSection>
         </div>
@@ -245,7 +248,10 @@ export function GlobeSidebar({
           isOpen={openDropdown === "carriers"}
           onToggle={() => toggleDropdown("carriers")}
         >
-          <CarrierTableCard carriers={SAMPLE_CARRIERS} />
+          <CarrierTableCard
+            carriers={simulationData?.carriers ?? []}
+            loading={simulationLoading}
+          />
         </DropdownSection>
         </div>
       </div>
@@ -261,16 +267,10 @@ export function GlobeSidebar({
         }}
       >
         <ImpactStatsCard
-          vessels={globeState.entities.length * 45 + 120}
-          routes={routes.filter((r) =>
-            globeState.entities.some(
-              (e) =>
-                r.chokepoints_transited.includes(e) ||
-                r.origin_port_id === e ||
-                r.destination_port_id === e
-            )
-          ).length}
-          costUsd={globeState.entities.length * 25000000 + 150000000}
+          vessels={affectedVessels}
+          routes={affectedRoutes}
+          costUsd={totalCost}
+          loading={simulationLoading}
         />
       </div>
     </motion.div>

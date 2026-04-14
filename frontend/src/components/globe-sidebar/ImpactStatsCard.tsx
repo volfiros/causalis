@@ -4,22 +4,21 @@ interface ImpactStatsCardProps {
   vessels: number;
   routes: number;
   costUsd: number;
-  customMetric?: { label: string; value: string };
+  loading?: boolean;
 }
 
-export function ImpactStatsCard({ vessels, routes, costUsd, customMetric }: ImpactStatsCardProps) {
+export function ImpactStatsCard({ vessels, routes, costUsd, loading }: ImpactStatsCardProps) {
   const metrics = [
     { label: "Vessels", value: vessels.toLocaleString() },
     { label: "Routes", value: routes.toLocaleString() },
-    { label: "Est. Cost", value: `$${(costUsd / 1_000_000).toFixed(1)}M` },
-    customMetric || { label: "Impact", value: "High" },
+    { label: "Est. Cost", value: costUsd >= 1_000_000 ? `$${(costUsd / 1_000_000).toFixed(1)}M` : `$${(costUsd / 1_000).toFixed(0)}K` },
   ];
 
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
+        gridTemplateColumns: "repeat(3, 1fr)",
         gap: "1px",
         backgroundColor: "rgba(255, 255, 255, 0.15)",
         border: "1px solid rgba(255, 255, 255, 0.15)",
@@ -56,10 +55,10 @@ export function ImpactStatsCard({ vessels, routes, costUsd, customMetric }: Impa
               fontFamily: "var(--font-outfit), system-ui, sans-serif",
               fontSize: i === 2 ? "14px" : "16px",
               fontWeight: 600,
-              color: i === 2 ? "#22d3ee" : "#ffffff",
+              color: loading ? "rgba(255, 255, 255, 0.3)" : i === 2 ? "#22d3ee" : "#ffffff",
             }}
           >
-            {metric.value}
+            {loading ? "—" : metric.value}
           </div>
         </div>
       ))}

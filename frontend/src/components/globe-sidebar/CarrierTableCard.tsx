@@ -1,42 +1,53 @@
 "use client";
-
-import { useState } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react";
-
-interface Carrier {
-  name: string;
-  exposure: number;
-}
+import { SimulationCarrier } from "@/lib/use-simulation";
 
 interface CarrierTableCardProps {
-  carriers: Carrier[];
+  carriers: SimulationCarrier[];
+  loading?: boolean;
 }
 
-export function CarrierTableCard({ carriers }: CarrierTableCardProps) {
-  const [sortBy, setSortBy] = useState<"name" | "exposure">("exposure");
-  const [sortDesc, setSortDesc] = useState(true);
+const getExposureColor = (score: number) => {
+  if (score > 0.6) return "#22d3ee";
+  if (score > 0.3) return "#ffffff";
+  return "rgba(255, 255, 255, 0.4)";
+};
 
-  const sortedCarriers = [...carriers].sort((a, b) => {
-    if (sortBy === "exposure") {
-      return sortDesc ? b.exposure - a.exposure : a.exposure - b.exposure;
-    }
-    return sortDesc ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
-  });
+export function CarrierTableCard({ carriers, loading }: CarrierTableCardProps) {
+  const sortedCarriers = [...(carriers || [])].sort(
+    (a, b) => b.exposure_score - a.exposure_score
+  );
 
-  const toggleSort = (field: "name" | "exposure") => {
-    if (sortBy === field) {
-      setSortDesc(!sortDesc);
-    } else {
-      setSortBy(field);
-      setSortDesc(true);
-    }
-  };
+  if (loading) {
+    return (
+      <div
+        style={{
+          fontFamily: "var(--font-mono), ui-monospace, monospace",
+          fontSize: "11px",
+          color: "rgba(255, 255, 255, 0.4)",
+          padding: "8px 0",
+          textAlign: "center",
+        }}
+      >
+        Loading carriers...
+      </div>
+    );
+  }
 
-  const getExposureColor = (exposure: number) => {
-    if (exposure > 0.7) return "#22d3ee";
-    if (exposure > 0.4) return "#ffffff";
-    return "rgba(255, 255, 255, 0.4)";
-  };
+  if (!sortedCarriers.length) {
+    return (
+      <div
+        style={{
+          fontFamily: "var(--font-mono), ui-monospace, monospace",
+          fontSize: "11px",
+          color: "rgba(255, 255, 255, 0.4)",
+          padding: "8px 0",
+          textAlign: "center",
+        }}
+      >
+        No carrier data available
+      </div>
+    );
+  }
 
   return (
     <div
@@ -45,87 +56,87 @@ export function CarrierTableCard({ carriers }: CarrierTableCardProps) {
         border: "1px solid rgba(255, 255, 255, 0.08)",
         borderRadius: "8px",
         overflow: "hidden",
-        marginBottom: "16px",
       }}
     >
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 100px",
+          gridTemplateColumns: "1fr 80px",
           padding: "10px 12px",
           borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
           backgroundColor: "rgba(255, 255, 255, 0.02)",
         }}
       >
-        <button
-          onClick={() => toggleSort("name")}
+        <span
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "4px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
             fontFamily: "var(--font-mono), ui-monospace, monospace",
             fontSize: "9px",
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: "rgba(255, 255, 255, 0.5)",
-            textAlign: "left",
           }}
         >
           Carrier
-          {sortBy === "name" && (sortDesc ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />)}
-        </button>
-        <button
-          onClick={() => toggleSort("exposure")}
+        </span>
+        <span
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            gap: "4px",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
             fontFamily: "var(--font-mono), ui-monospace, monospace",
             fontSize: "9px",
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: "rgba(255, 255, 255, 0.5)",
+            textAlign: "right",
           }}
         >
           Exposure
-          {sortBy === "exposure" && (sortDesc ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />)}
-        </button>
+        </span>
       </div>
 
-      <div style={{ maxHeight: "200px", overflow: "auto" }}>
-        {sortedCarriers.slice(0, 5).map((carrier, i) => (
+      <div
+        style={{
+          maxHeight: "240px",
+          overflowY: "auto",
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(34, 211, 238, 0.3) transparent",
+        }}
+        className="carrier-scroll"
+      >
+        {sortedCarriers.map((carrier) => (
           <div
-            key={i}
+            key={carrier.carrier_id}
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 100px",
+              gridTemplateColumns: "1fr 80px",
               alignItems: "center",
-              padding: "10px 12px",
-              borderBottom: i < sortedCarriers.length - 1 ? "1px solid rgba(255, 255, 255, 0.05)" : "none",
-              height: "40px",
+              padding: "8px 12px",
+              borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
             }}
           >
-            <span
-              style={{
-                fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                fontSize: "12px",
-                fontWeight: 500,
-                color: "#ffffff",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {carrier.name}
-            </span>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div>
+              <div
+                style={{
+                  fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                  fontSize: "12px",
+                  fontWeight: 500,
+                  color: "#ffffff",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {carrier.name}
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono), ui-monospace, monospace",
+                  fontSize: "9px",
+                  color: "rgba(255, 255, 255, 0.35)",
+                }}
+              >
+                {carrier.routes_exposed} route{carrier.routes_exposed !== 1 ? "s" : ""} affected
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", justifyContent: "flex-end" }}>
               <div
                 style={{
                   flex: 1,
@@ -137,9 +148,9 @@ export function CarrierTableCard({ carriers }: CarrierTableCardProps) {
               >
                 <div
                   style={{
-                    width: `${carrier.exposure * 100}%`,
+                    width: `${Math.min(carrier.exposure_score * 100, 100)}%`,
                     height: "100%",
-                    backgroundColor: getExposureColor(carrier.exposure),
+                    backgroundColor: getExposureColor(carrier.exposure_score),
                     borderRadius: "2px",
                   }}
                 />
@@ -147,18 +158,35 @@ export function CarrierTableCard({ carriers }: CarrierTableCardProps) {
               <span
                 style={{
                   fontFamily: "var(--font-mono), ui-monospace, monospace",
-                  fontSize: "9px",
-                  color: getExposureColor(carrier.exposure),
-                  minWidth: "28px",
+                  fontSize: "10px",
+                  color: getExposureColor(carrier.exposure_score),
+                  minWidth: "32px",
                   textAlign: "right",
+                  fontWeight: 600,
                 }}
               >
-                {(carrier.exposure * 100).toFixed(0)}%
+                {(carrier.exposure_score * 100).toFixed(0)}%
               </span>
             </div>
           </div>
         ))}
       </div>
+
+      {sortedCarriers.length > 5 && (
+        <div
+          style={{
+            padding: "6px 12px",
+            textAlign: "center",
+            borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+            fontFamily: "var(--font-mono), ui-monospace, monospace",
+            fontSize: "9px",
+            color: "rgba(255, 255, 255, 0.3)",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Scroll for {sortedCarriers.length - 5} more
+        </div>
+      )}
     </div>
   );
 }
