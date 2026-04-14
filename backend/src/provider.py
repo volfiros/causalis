@@ -59,16 +59,21 @@ async def chat_stream(request: ChatRequest):
         raise HTTPException(status_code=400, detail="No messages provided")
 
     user_message = request.messages[-1].get("content", "")
+    print(f"[provider] Incoming message: {user_message[:100]}")
     _, _, simulator, kb = _get_world()
 
     entities = extract_entities(user_message)
     chokepoints = entities.get("chokepoints", [])
     ports = entities.get("ports", [])
     severity = entities.get("severity", "partial")
+    print(f"[provider] Entities: chokepoints={chokepoints}, ports={ports}, severity={severity}")
 
     simulation = None
     if chokepoints:
         simulation = simulator.run_scenario(chokepoints, severity)
+        print(f"[provider] Simulation ran: {simulation is not None}, scenario={simulation.scenario if simulation else None}")
+    else:
+        print(f"[provider] No chokepoints found — using fallback prompt")
 
     rag_results = kb.retrieve(user_message, n_results=3)
     rag_context = "\n\n".join(r["content"] for r in rag_results) if rag_results else ""
@@ -77,6 +82,7 @@ async def chat_stream(request: ChatRequest):
 
     if simulation:
         prompt = build_prompt(user_message, simulation, rag_context, all_entities)
+        print(f"[provider] Using SIMULATION prompt (len={len(prompt)})")
     else:
         entity_instruction = (
             f"Relevant spatial entities: {all_entities}\n"
@@ -118,15 +124,20 @@ async def chat_stream(request: ChatRequest):
 
     genai.configure(api_key=api_key)
     model_name = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+    print(f"[provider] Using model: {model_name}")
     model = genai.GenerativeModel(model_name)
 
     async def text_stream():
         try:
+            full_response = ""
             response = model.generate_content(prompt, stream=True)
             for chunk in response:
                 if chunk.text:
+                    full_response += chunk.text
                     yield chunk.text
+            print(f"[provider] Response length: {len(full_response)}, starts with: {full_response[:80]}")
         except Exception as e:
+            print(f"[provider] Error: {e}")
             yield f"[Error: {e}]"
 
     return StreamingResponse(text_stream(), media_type="text/event-stream")

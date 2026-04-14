@@ -108,6 +108,11 @@ function OpenUIRenderer({
     }
   }, [isStreaming, parseState]);
 
+  // DEBUG: log what Renderer is seeing
+  useEffect(() => {
+    console.log("[OpenUIRenderer]", { parseState, isStreaming, responseLen: response.length, sanitizedStart: sanitized.slice(0, 80) });
+  }, [parseState, isStreaming, response.length, sanitized]);
+
   const fallback = (
     <p
       className="text-sm leading-relaxed"
@@ -133,10 +138,12 @@ function OpenUIRenderer({
         response={sanitized}
         library={library}
         isStreaming={isStreaming}
-        onError={() => {
+        onError={(errors) => {
+          console.log("[OpenUIRenderer] onError", errors);
           if (!isStreaming) setParseState("failed");
         }}
         onParseResult={(result) => {
+          console.log("[OpenUIRenderer] onParseResult", { hasRoot: !!result?.root, rootType: result?.root?.typeName });
           if (result?.root) setParseState("success");
         }}
       />
@@ -671,6 +678,8 @@ function ChatPanel({
 function ChatContent() {
   const { messages, sendMessage, status, error } = useChat({
     transport: new TextStreamChatTransport({ api: "/api/chat/stream" }),
+    onError: (err) => { console.error("[ChatContent] useChat error:", err); },
+    onFinish: (msg) => { console.log("[ChatContent] useChat onFinish:", { role: msg.message?.role, contentLen: getMessageText(msg.message)?.length }); },
   });
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
