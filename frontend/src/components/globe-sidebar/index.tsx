@@ -213,11 +213,12 @@ export function GlobeSidebar({
           left: "16px",
           right: "80px",
           zIndex: 60,
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          display: "flex",
           gap: "12px",
+          alignItems: "flex-start",
         }}
       >
+        <div style={{ flex: "1 1 0", minWidth: 0 }}>
         <DropdownSection
           id="scenarios-dropdown"
           title="Active Scenarios"
@@ -233,7 +234,9 @@ export function GlobeSidebar({
             onEntitySelect={onEntitySelect}
           />
         </DropdownSection>
+        </div>
 
+        <div style={{ flex: "1 1 0", minWidth: 0 }}>
         <DropdownSection
           id="carriers-dropdown"
           title="Carriers"
@@ -242,6 +245,7 @@ export function GlobeSidebar({
         >
           <CarrierTableCard carriers={SAMPLE_CARRIERS} />
         </DropdownSection>
+        </div>
       </div>
 
       {/* Bottom Section - Impact Stats */}
