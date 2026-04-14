@@ -96,6 +96,7 @@ export function CarrierTableCard({ carriers, loading }: CarrierTableCardProps) {
         style={{
           maxHeight: "240px",
           overflowY: "auto",
+          overflowX: "hidden",
           scrollbarWidth: "thin",
           scrollbarColor: "rgba(34, 211, 238, 0.3) transparent",
         }}
@@ -112,7 +113,7 @@ export function CarrierTableCard({ carriers, loading }: CarrierTableCardProps) {
               borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
             }}
           >
-            <div>
+            <div style={{ minWidth: 0, overflow: "hidden" }}>
               <div
                 style={{
                   fontFamily: "var(--font-outfit), system-ui, sans-serif",
