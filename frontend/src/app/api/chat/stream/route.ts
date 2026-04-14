@@ -39,6 +39,7 @@ export async function POST(req: Request) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ messages: normalizedMessages }),
+    signal: AbortSignal.timeout(30000),
   });
 
   console.log(`[api/chat/stream] Backend responded: ${response.status} ${response.statusText}`);
