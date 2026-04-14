@@ -152,21 +152,33 @@ export function GlobeSidebar({
         overflow: "hidden",
       }}
     >
-      {/* Globe Background - Full size */}
+      {/* Globe Background Container - Full size with centered smaller globe */}
       <div
         style={{
           position: "absolute",
           inset: 0,
           zIndex: 0,
+          background: "radial-gradient(ellipse at center, rgba(10, 10, 30, 0.9) 0%, rgba(0, 0, 0, 1) 70%)",
         }}
       >
-        <SideGlobe
-          highlightedEntities={highlightedEntities}
-          highlightedRouteIds={highlightedRouteIds}
-          selectedPinId={selectedEntityId}
-          onPinClick={onPinClick}
-          dpr={1.5}
-        />
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "75%",
+            height: "75%",
+          }}
+        >
+          <SideGlobe
+            highlightedEntities={highlightedEntities}
+            highlightedRouteIds={highlightedRouteIds}
+            selectedPinId={selectedEntityId}
+            onPinClick={onPinClick}
+            dpr={1.5}
+          />
+        </div>
       </div>
 
       {/* Close Button - Top Right */}
