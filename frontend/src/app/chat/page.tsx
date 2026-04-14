@@ -221,7 +221,7 @@ function ChatPanel({
     <div
       className="relative z-10 flex flex-col h-full transition-all duration-300 ease-in-out"
       style={{
-        marginRight: 0,
+        marginRight: isSidebarOpen ? "50%" : "0",
       }}
     >
       <header
@@ -625,14 +625,6 @@ function ChatContent() {
 
   return (
     <>
-      <SideGlobe
-        highlightedEntities={highlightedEntities}
-        highlightedRouteIds={highlightedRouteIds}
-        selectedPinId={selectedPinId}
-        onPinClick={setSelectedPinId}
-        dpr={1}
-      />
-
       <GlobeSidebar
         globeState={globeState}
         isOpen={isSidebarOpen}

@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect, useState, useCallback } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { Html } from "@react-three/drei";
+import { Html, OrbitControls } from "@react-three/drei";
 import { fetchSpatialData, getAllPorts, getAllChokepoints, getAllRoutes, SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
 import { buildArcGeometry, ArcData, computeArcsFromRoutes } from "@/lib/arc-utils";
 import { emitGlobeEvent } from "@/lib/globe-events";

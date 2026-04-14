@@ -21,18 +21,20 @@ export function ImpactStatsCard({ vessels, routes, costUsd, customMetric }: Impa
         display: "grid",
         gridTemplateColumns: "repeat(2, 1fr)",
         gap: "1px",
-        backgroundColor: "rgba(255, 255, 255, 0.08)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        borderRadius: "8px",
+        backgroundColor: "rgba(255, 255, 255, 0.15)",
+        border: "1px solid rgba(255, 255, 255, 0.15)",
+        borderRadius: "12px",
         overflow: "hidden",
-        marginBottom: "16px",
+        boxShadow: "0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(34, 211, 238, 0.1)",
+        background: "rgba(0, 0, 0, 0.75)",
+        backdropFilter: "blur(12px)",
       }}
     >
       {metrics.map((metric, i) => (
         <div
           key={i}
           style={{
-            backgroundColor: "rgba(255, 255, 255, 0.03)",
+            backgroundColor: "rgba(0, 0, 0, 0.4)",
             padding: "14px 12px",
             textAlign: "center",
           }}
