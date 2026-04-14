@@ -12,7 +12,7 @@ export interface ArcData {
   routeId: string;
 }
 
-const R = 4;
+const R = 3;
 
 function latLng(lat: number, lng: number, r: number) {
   const phi = (90 - lat) * (Math.PI / 180);
@@ -27,7 +27,7 @@ function latLng(lat: number, lng: number, r: number) {
 export function buildArcGeometry(
   start: [number, number],
   end: [number, number],
-  arcHeight: number = R * 1.2,
+  arcHeight: number = R * 1.15,
   segments: number = 24
 ): THREE.BufferGeometry {
   const startVec = latLng(start[0], start[1], R * 1.005);

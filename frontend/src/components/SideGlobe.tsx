@@ -142,12 +142,12 @@ function PinMesh({
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
       >
-        <sphereGeometry args={[0.04, 8, 8]} />
+        <sphereGeometry args={[0.03, 8, 8]} />
         <meshBasicMaterial color="#22d3ee" />
       </mesh>
       {isSelected && (
         <mesh>
-          <ringGeometry args={[0.08, 0.1, 16]} />
+          <ringGeometry args={[0.06, 0.075, 16]} />
           <meshBasicMaterial color="#22d3ee" transparent opacity={0.6} side={THREE.DoubleSide} />
         </mesh>
       )}
@@ -210,14 +210,14 @@ function Globe({
 
   const backgroundArcGeos = useMemo(() => {
     return backgroundArcs.map(arc => ({
-      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.2, 24),
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.15, 24),
       routeId: arc.routeId,
     }));
   }, [backgroundArcs]);
 
   const affectedArcGeos = useMemo(() => {
     return affectedArcs.map(arc => ({
-      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.2, 24),
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.15, 24),
       routeId: arc.routeId,
     }));
   }, [affectedArcs]);
@@ -275,7 +275,7 @@ function Globe({
     const intersects = raycaster.intersectObjects(globeGroup.children, true);
     const clickedPin = intersects.find(hit =>
       visiblePins.some(pin =>
-        Math.abs(hit.point.distanceTo(pin.position)) < 0.1
+        Math.abs(hit.point.distanceTo(pin.position)) < 0.075
       )
     );
 
@@ -335,7 +335,7 @@ function Globe({
         </mesh>
 
         <points geometry={dotGeo}>
-          <pointsMaterial color="#ffffff" size={0.015} transparent opacity={0.2} sizeAttenuation />
+          <pointsMaterial color="#ffffff" size={0.011} transparent opacity={0.2} sizeAttenuation />
         </points>
 
         {landGeo && (
@@ -355,8 +355,8 @@ function Globe({
             <lineSegments key={routeId} geometry={geo}>
               <lineDashedMaterial
                 color="#3b82f6"
-                dashSize={0.15}
-                gapSize={0.08}
+                dashSize={0.11}
+                gapSize={0.06}
                 linewidth={2}
                 transparent
                 opacity={0.8}
@@ -378,11 +378,11 @@ function Globe({
         ))}
 
         <instancedMesh ref={glowMeshes} args={[undefined, undefined, Math.max(1, glowPositions.length)]}>
-          <sphereGeometry args={[0.12, 8, 8]} />
+          <sphereGeometry args={[0.09, 8, 8]} />
           <meshBasicMaterial color="#22d3ee" transparent opacity={0.12} />
         </instancedMesh>
 
-        <mesh scale={[1.06, 1.06, 1.06]}>
+        <mesh scale={[1.05, 1.05, 1.05]}>
           <sphereGeometry args={[R, 24, 24]} />
           <meshBasicMaterial color="#22d3ee" transparent opacity={0.02} side={THREE.BackSide} />
         </mesh>
@@ -391,8 +391,8 @@ function Globe({
       <OrbitControls
         enablePan={false}
         enableZoom={false}
-        minDistance={8}
-        maxDistance={15}
+        minDistance={6}
+        maxDistance={12}
         autoRotate={autoRotate}
         autoRotateSpeed={0.5}
       />
@@ -449,7 +449,7 @@ export default function SideGlobe({
   return (
     <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)", pointerEvents: "auto" }}>
       <Canvas
-        camera={{ position: [-1.75, 0, 10.5], fov: 45 }}
+        camera={{ position: [-1.3, 0, 8.5], fov: 45 }}
         dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {

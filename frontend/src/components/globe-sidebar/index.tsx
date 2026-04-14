@@ -72,11 +72,7 @@ function DropdownSection({
       }}
     >
       <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onToggle();
-        }}
+        onClick={onToggle}
         style={{
           width: "100%",
           display: "flex",
@@ -106,19 +102,11 @@ function DropdownSection({
           <ChevronDown className="w-4 h-4" style={{ color: "rgba(255, 255, 255, 0.5)" }} />
         )}
       </button>
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            style={{ overflow: "hidden" }}
-          >
-            <div style={{ padding: "0 16px 16px" }}>{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isOpen && (
+        <div style={{ padding: "0 16px 16px", overflow: "hidden" }}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
