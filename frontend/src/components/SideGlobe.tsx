@@ -328,7 +328,7 @@ function Globe({
       <directionalLight position={[10, 8, 10]} intensity={1.2} />
       <pointLight position={[-8, 0, -8]} intensity={0.3} color="#22d3ee" />
 
-      <group ref={groupRef} position={[0, 0.6, 0]}>
+      <group ref={groupRef}>
         <mesh>
           <sphereGeometry args={[R, 48, 48]} />
           <meshBasicMaterial color="#0a0a1a" />
@@ -395,6 +395,7 @@ function Globe({
         maxDistance={18}
         autoRotate={autoRotate}
         autoRotateSpeed={0.5}
+        target={[0, 0.6, 0]}
       />
     </>
   );
