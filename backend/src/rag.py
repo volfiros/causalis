@@ -1,64 +1,33 @@
-import os
-os.environ["ANONYMIZED_TELEMETRY"] = "False"
-os.environ["CHROMA_TELEMETRY"] = "False"
-os.environ["CHROMADB_TELEMETRY"] = "False"
-
 import warnings
 warnings.filterwarnings("ignore", message=".*urllib3.*")
 warnings.filterwarnings("ignore", message=".*capture.*")
 
-from chromadb.api.types import EmbeddingFunction
-from chromadb.types import Metadata
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Optional
 import json as _json
+import numpy as np
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 
 
-class SentenceTransformerEmbedding(EmbeddingFunction):
+class MaritimeKnowledgeBase:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         from sentence_transformers import SentenceTransformer
         self._model = SentenceTransformer(model_name)
-
-    def __call__(self, input_texts: Union[str, List[str]]) -> List[List[float]]:
-        if isinstance(input_texts, str):
-            input_texts = [input_texts]
-        return self._model.encode(input_texts).tolist()
-
-
-class MaritimeKnowledgeBase:
-    def __init__(
-        self,
-        persist_directory: Optional[str] = None,
-        collection_name: str = "maritime_knowledge",
-        embedding_function: Optional[EmbeddingFunction] = None,
-    ):
-        import chromadb
-
-        if persist_directory:
-            self.client = chromadb.PersistentClient(path=persist_directory)
-        else:
-            self.client = chromadb.EphemeralClient()
-
-        self.ef = embedding_function or SentenceTransformerEmbedding()
-        self.collection = self.client.get_or_create_collection(
-            name=collection_name,
-            embedding_function=self.ef,
-        )
+        self._documents: List[str] = []
+        self._metadatas: List[dict] = []
+        self._embeddings: Optional[np.ndarray] = None
         self._load_data()
 
     def _load_data(self) -> None:
         docs: List[str] = []
-        ids: List[str] = []
-        metadatas: List[Metadata] = []
+        metadatas: List[dict] = []
 
         try:
             with open(DATA_DIR / "disruptions.json") as f:
                 for d in _json.load(f):
                     doc_id = d["id"]
                     docs.append(f"[ID:{doc_id}] {_json.dumps(d)}")
-                    ids.append(doc_id)
                     metadatas.append({"type": "disruption_event", "chokepoint": d.get("chokepoint", "")})
         except FileNotFoundError:
             pass
@@ -68,7 +37,6 @@ class MaritimeKnowledgeBase:
                 for p in _json.load(f):
                     doc_id = "port_" + p["id"]
                     docs.append(f"[ID:{doc_id}] {_json.dumps(p)}")
-                    ids.append(doc_id)
                     metadatas.append({"type": "port", "name": p["name"]})
         except FileNotFoundError:
             pass
@@ -78,7 +46,6 @@ class MaritimeKnowledgeBase:
                 for c in _json.load(f):
                     doc_id = "carrier_" + c["id"]
                     docs.append(f"[ID:{doc_id}] {_json.dumps(c)}")
-                    ids.append(doc_id)
                     metadatas.append({"type": "carrier", "name": c["name"]})
         except FileNotFoundError:
             pass
@@ -88,29 +55,25 @@ class MaritimeKnowledgeBase:
                 for r in _json.load(f):
                     doc_id = "route_" + r["id"]
                     docs.append(f"[ID:{doc_id}] {_json.dumps(r)}")
-                    ids.append(doc_id)
                     metadatas.append({"type": "route", "name": r["name"]})
         except FileNotFoundError:
             pass
 
         if docs:
-            self.collection.add(documents=docs, ids=ids, metadatas=metadatas)
+            self._documents = docs
+            self._metadatas = metadatas
+            self._embeddings = self._model.encode(docs, normalize_embeddings=True)
 
     def retrieve(self, query: str, n_results: int = 3) -> List[dict]:
-        if not query.strip() or not self.collection.count():
+        if not query.strip() or self._embeddings is None or len(self._documents) == 0:
             return []
-        results = self.collection.query(
-            query_texts=[query],
-            n_results=min(n_results, self.collection.count()),
-            include=["documents", "metadatas"],
-        )
-        docs = results.get("documents", [[]])[0]
-        metas = results.get("metadatas", [[]])[0]
-        if not docs:
-            return []
+        query_embedding = self._model.encode([query], normalize_embeddings=True)
+        scores = (query_embedding @ self._embeddings.T).flatten()
+        top_k = min(n_results, len(self._documents))
+        top_indices = np.argsort(scores)[::-1][:top_k]
         return [
-            {"id": self._extract_id(doc), "content": doc, "metadata": meta}
-            for doc, meta in zip(docs, metas)
+            {"id": self._extract_id(self._documents[i]), "content": self._documents[i], "metadata": self._metadatas[i]}
+            for i in top_indices
         ]
 
     def _extract_id(self, doc: str) -> str:

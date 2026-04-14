@@ -9,8 +9,6 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="google")
 warnings.filterwarnings("ignore", message=".*capture.*")
 
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
-os.environ["CHROMA_TELEMETRY"] = "False"
-os.environ["CHROMADB_TELEMETRY"] = "False"
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
@@ -24,7 +22,6 @@ from src.temporal_model import TemporalModel
 from src.simulator import DisruptionSimulator
 from src.entity_extractor import extract_entities
 from src.prompt_builder import build_prompt
-from src.rag import MaritimeKnowledgeBase
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
@@ -44,13 +41,34 @@ _simulator = None
 _kb = None
 
 
+@app.on_event("startup")
+async def startup():
+    print("[provider] FastAPI app starting up...")
+    try:
+        _get_world()
+        print("[provider] World model initialized successfully")
+    except Exception as e:
+        print(f"[provider] World model initialization failed (will retry on first request): {e}")
+
+
 def _get_world():
     global _world, _temporal, _simulator, _kb
     if _world is None:
-        _world = MaritimeWorldModel()
-        _temporal = TemporalModel(_world)
-        _simulator = DisruptionSimulator(_world, _temporal)
-        _kb = MaritimeKnowledgeBase()
+        try:
+            _world = MaritimeWorldModel()
+            _temporal = TemporalModel(_world)
+            _simulator = DisruptionSimulator(_world, _temporal)
+        except Exception as e:
+            _world = None
+            _temporal = None
+            _simulator = None
+            raise
+        try:
+            from src.rag import MaritimeKnowledgeBase
+            _kb = MaritimeKnowledgeBase()
+        except Exception as e:
+            print(f"[provider] Warning: RAG initialization failed: {e}")
+            _kb = None
     return _world, _temporal, _simulator, _kb
 
 
@@ -81,7 +99,7 @@ async def chat_stream(request: ChatRequest):
     else:
         print(f"[provider] No chokepoints found — using fallback prompt")
 
-    rag_results = kb.retrieve(user_message, n_results=3)
+    rag_results = kb.retrieve(user_message, n_results=3) if kb else []
     rag_context = "\n\n".join(r["content"] for r in rag_results) if rag_results else ""
 
     all_entities = chokepoints + ports
