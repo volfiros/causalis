@@ -450,7 +450,7 @@ export default function SideGlobe({
   return (
     <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)", pointerEvents: "auto" }}>
       <Canvas
-        camera={{ position: [-1, 2, 12], fov: 45 }}
+        camera={{ position: [-1, 0, 12], fov: 45 }}
         dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         onCreated={({ gl }) => {

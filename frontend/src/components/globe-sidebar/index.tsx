@@ -150,11 +150,13 @@ export function GlobeSidebar({
         overflow: "hidden",
       }}
     >
-      {/* Globe Container - Full size filling entire sidebar */}
+      {/* Globe Container - Full size filling entire sidebar, shifted up */}
       <div
         style={{
           position: "absolute",
           inset: 0,
+          top: "-15%",
+          bottom: "15%",
           zIndex: 0,
           background: "radial-gradient(ellipse at center, rgba(10, 10, 30, 0.9) 0%, rgba(0, 0, 0, 1) 70%)",
         }}
