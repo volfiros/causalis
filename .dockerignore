@@ -1,0 +1,12 @@
+frontend/
+.git/
+.github/
+node_modules/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+plans/
+.env
+*.md
+.dockerignore

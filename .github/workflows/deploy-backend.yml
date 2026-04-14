@@ -1,0 +1,41 @@
+name: Deploy backend to Hugging Face Spaces
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Push to Hugging Face Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git clone https://agaroth:${HF_TOKEN}@huggingface.co/spaces/agaroth/causalis-backend hf-space
+
+          # Copy files into HF space repo
+          cp Dockerfile hf-space/
+          mkdir -p hf-space/backend/src hf-space/backend/data
+          cp backend/requirements.txt hf-space/backend/
+          cp backend/src/* hf-space/backend/src/
+          cp backend/data/* hf-space/backend/data/
+
+          cd hf-space
+          git add -A
+          git diff --cached --quiet || git commit -m "Deploy from GitHub: ${GITHUB_SHA::7}"
+          git push https://agaroth:${HF_TOKEN}@huggingface.co/spaces/agaroth/causales-backend
