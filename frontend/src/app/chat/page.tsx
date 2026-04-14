@@ -90,22 +90,23 @@ function OpenUIRenderer({
 }) {
   const [parseState, setParseState] = useState<"streaming" | "success" | "failed">("streaming");
   const sanitized = useMemo(() => sanitizeOpenUIResponse(response), [response]);
+  const responseKey = useMemo(() => (response.length > 0 ? response.slice(0, 50) : "empty"), [response]);
 
-  // When streaming ends, check if we got a valid parse result
+  // Reset state when response changes (new message)
+  useEffect(() => {
+    setParseState("streaming");
+  }, [responseKey]);
+
+  // After streaming ends, give the Renderer time to parse.
+  // Only mark as failed if Renderer never reported success.
   useEffect(() => {
     if (!isStreaming && parseState === "streaming") {
       const timer = setTimeout(() => {
-        // If Renderer never called onParseResult with a root, it's failed
         setParseState((prev) => (prev === "streaming" ? "failed" : prev));
-      }, 300);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [isStreaming, parseState]);
-
-  // Reset on new message
-  useEffect(() => {
-    setParseState("streaming");
-  }, [response.length === 0 || !response]);
 
   const fallback = (
     <p
@@ -120,7 +121,7 @@ function OpenUIRenderer({
     </p>
   );
 
-  // Only show text fallback after streaming completes and parsing definitively failed
+  // Only show text fallback after streaming completes AND parsing definitively failed
   if (!isStreaming && parseState === "failed") {
     return <>{fallback}</>;
   }
