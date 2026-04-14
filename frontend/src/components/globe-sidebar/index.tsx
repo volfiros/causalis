@@ -44,23 +44,21 @@ const SAMPLE_CARRIERS = [
 ];
 
 function DropdownSection({
+  id,
   title,
   isOpen,
   onToggle,
   children,
 }: {
+  id: string;
   title: string;
   isOpen: boolean;
   onToggle: () => void;
   children: React.ReactNode;
 }) {
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onToggle();
-  };
-
   return (
     <div
+      id={id}
       style={{
         backgroundColor: "rgba(0, 0, 0, 0.75)",
         backdropFilter: "blur(12px)",
@@ -74,7 +72,11 @@ function DropdownSection({
       }}
     >
       <button
-        onClick={handleClick}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onToggle();
+        }}
         style={{
           width: "100%",
           display: "flex",
@@ -104,16 +106,14 @@ function DropdownSection({
           <ChevronDown className="w-4 h-4" style={{ color: "rgba(255, 255, 255, 0.5)" }} />
         )}
       </button>
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {isOpen && (
           <motion.div
-            key={`${title}-content`}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
             style={{ overflow: "hidden" }}
-            onClick={(e) => e.stopPropagation()}
           >
             <div style={{ padding: "0 16px 16px" }}>{children}</div>
           </motion.div>
@@ -159,7 +159,7 @@ export function GlobeSidebar({
         overflow: "hidden",
       }}
     >
-      {/* Globe Background Container - Full size with centered smaller globe */}
+      {/* Globe Container - Full size filling entire sidebar */}
       <div
         style={{
           position: "absolute",
@@ -168,24 +168,13 @@ export function GlobeSidebar({
           background: "radial-gradient(ellipse at center, rgba(10, 10, 30, 0.9) 0%, rgba(0, 0, 0, 1) 70%)",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "75%",
-            height: "75%",
-          }}
-        >
-          <SideGlobe
-            highlightedEntities={highlightedEntities}
-            highlightedRouteIds={highlightedRouteIds}
-            selectedPinId={selectedEntityId}
-            onPinClick={onPinClick}
-            dpr={1.5}
-          />
-        </div>
+        <SideGlobe
+          highlightedEntities={highlightedEntities}
+          highlightedRouteIds={highlightedRouteIds}
+          selectedPinId={selectedEntityId}
+          onPinClick={onPinClick}
+          dpr={1.5}
+        />
       </div>
 
       {/* Close Button - Top Right */}
@@ -239,6 +228,7 @@ export function GlobeSidebar({
         }}
       >
         <DropdownSection
+          id="scenarios-dropdown"
           title="Active Scenarios"
           isOpen={scenariosOpen}
           onToggle={() => {
@@ -257,6 +247,7 @@ export function GlobeSidebar({
         </DropdownSection>
 
         <DropdownSection
+          id="carriers-dropdown"
           title="Carriers"
           isOpen={carriersOpen}
           onToggle={() => {
