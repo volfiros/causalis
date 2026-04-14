@@ -88,28 +88,24 @@ function OpenUIRenderer({
   library: Library;
   isStreaming: boolean;
 }) {
-  const [parseState, setParseState] = useState<"idle" | "success" | "failed">("idle");
+  const [parseState, setParseState] = useState<"streaming" | "success" | "failed">("streaming");
   const sanitized = useMemo(() => sanitizeOpenUIResponse(response), [response]);
 
-  // Only evaluate final parse result when streaming completes
+  // When streaming ends, check if we got a valid parse result
   useEffect(() => {
-    if (!isStreaming && parseState === "idle") {
-      // Defer to let Renderer complete its parsing
+    if (!isStreaming && parseState === "streaming") {
       const timer = setTimeout(() => {
-        // Check if response looks like valid OpenUI
-        const looksLikeOpenUI = sanitized.match(/^root\s*=\s*Stack\s*\(/);
-        if (!looksLikeOpenUI) {
-          setParseState("failed");
-        }
-      }, 100);
+        // If Renderer never called onParseResult with a root, it's failed
+        setParseState((prev) => (prev === "streaming" ? "failed" : prev));
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isStreaming, parseState, sanitized]);
+  }, [isStreaming, parseState]);
 
-  // Reset state when response changes completely (new message)
+  // Reset on new message
   useEffect(() => {
-    setParseState("idle");
-  }, [response.length === 0]);
+    setParseState("streaming");
+  }, [response.length === 0 || !response]);
 
   const fallback = (
     <p
@@ -120,25 +116,27 @@ function OpenUIRenderer({
         whiteSpace: "pre-wrap",
       }}
     >
-      {parseState === "failed" ? extractTextFromOpenUI(response) : response}
+      {extractTextFromOpenUI(response)}
     </p>
   );
 
-  // Show raw response while streaming or if failed
-  if (isStreaming || parseState === "failed") {
+  // Only show text fallback after streaming completes and parsing definitively failed
+  if (!isStreaming && parseState === "failed") {
     return <>{fallback}</>;
   }
 
+  // During streaming and after success: always use the Renderer
   return (
     <RendererErrorBoundary fallback={fallback}>
       <Renderer
         response={sanitized}
         library={library}
-        isStreaming={false}
-        onError={() => setParseState("failed")}
+        isStreaming={isStreaming}
+        onError={() => {
+          if (!isStreaming) setParseState("failed");
+        }}
         onParseResult={(result) => {
-          const hasValidRoot = !!result?.root;
-          if (hasValidRoot) setParseState("success");
+          if (result?.root) setParseState("success");
         }}
       />
     </RendererErrorBoundary>
