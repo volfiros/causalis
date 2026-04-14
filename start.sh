@@ -122,7 +122,7 @@ echo ""
 
 log "Starting backend on http://localhost:8000 ..."
 cd "$BACKEND_DIR"
-python3 -m uvicorn src.provider:app --host 0.0.0.0 --port 8000 &
+PYTHONWARNINGS=ignore::DeprecationWarning,ignore::FutureWarning,ignore::urllib3.exceptions.NotOpenSSLWarning python3 -W ignore -m uvicorn src.provider:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 cd "$PROJECT_ROOT"
 
