@@ -63,6 +63,7 @@ interface GlobeProps {
   autoRotate?: boolean;
   onPinClick?: (pinId: string) => void;
   selectedPinId?: string | null;
+  showOnlyChokepoints?: boolean;
 }
 
 function PinTooltip({ name, type, visible }: { name: string; type: string; visible: boolean }) {
@@ -127,6 +128,8 @@ function PinMesh({
   const meshRef = useRef<THREE.Mesh>(null);
 
   const scale = isSelected ? 1.8 : isHovered ? 1.3 : 1;
+  const pinColor = pin.type === "chokepoint" ? "#a855f7" : "#22d3ee";
+  const ringColor = pin.type === "chokepoint" ? "#a855f7" : "#22d3ee";
 
   useFrame(() => {
     if (meshRef.current) {
@@ -143,12 +146,12 @@ function PinMesh({
         onPointerLeave={onPointerLeave}
       >
         <sphereGeometry args={[0.03, 8, 8]} />
-        <meshBasicMaterial color="#22d3ee" />
+        <meshBasicMaterial color={pinColor} />
       </mesh>
       {isSelected && (
         <mesh>
           <ringGeometry args={[0.06, 0.075, 16]} />
-          <meshBasicMaterial color="#22d3ee" transparent opacity={0.6} side={THREE.DoubleSide} />
+          <meshBasicMaterial color={ringColor} transparent opacity={0.6} side={THREE.DoubleSide} />
         </mesh>
       )}
       <PinTooltip name={pin.name} type={pin.type} visible={isHovered || isSelected} />
@@ -166,6 +169,7 @@ function Globe({
   autoRotate = false,
   onPinClick,
   selectedPinId,
+  showOnlyChokepoints = false,
 }: GlobeProps) {
   const groupRef = useRef<THREE.Group>(null);
   const glowMeshes = useRef<THREE.InstancedMesh>(null);
@@ -244,9 +248,14 @@ function Globe({
   }, [ports, chokepoints]);
 
   const visiblePins = useMemo(() => {
-    if (highlightedEntities.length === 0) return allPins;
-    return allPins.filter(pin => highlightedEntities.includes(pin.id));
-  }, [allPins, highlightedEntities]);
+    if (highlightedEntities.length > 0) {
+      return allPins.filter(pin => highlightedEntities.includes(pin.id));
+    }
+    if (showOnlyChokepoints) {
+      return allPins.filter(pin => pin.type === "chokepoint");
+    }
+    return allPins;
+  }, [allPins, highlightedEntities, showOnlyChokepoints]);
 
   const glowPositions = useMemo(() => {
     return visiblePins.map(pin => pin.position);
@@ -408,6 +417,7 @@ export interface SideGlobeProps {
   onPinClick?: (pinId: string) => void;
   selectedPinId?: string | null;
   dpr?: number;
+  showOnlyChokepoints?: boolean;
 }
 
 export default function SideGlobe({
@@ -417,6 +427,7 @@ export default function SideGlobe({
   onPinClick,
   selectedPinId,
   dpr = 1,
+  showOnlyChokepoints = false,
 }: SideGlobeProps) {
   const [countries, setCountries] = useState<GeoFeature[]>([]);
   const [ports, setPorts] = useState<SpatialPort[]>([]);
@@ -475,6 +486,7 @@ export default function SideGlobe({
             autoRotate={autoRotate}
             onPinClick={onPinClick}
             selectedPinId={selectedPinId}
+            showOnlyChokepoints={showOnlyChokepoints}
           />
         )}
       </Canvas>

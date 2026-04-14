@@ -103,7 +103,7 @@ export default function HomePage() {
           zIndex: 0,
         }}
       >
-        <SideGlobe autoRotate={true} />
+        <SideGlobe autoRotate={true} showOnlyChokepoints={true} />
       </div>
 
       <div className="absolute inset-0 pointer-events-none">
@@ -202,7 +202,7 @@ export default function HomePage() {
                 color: "var(--color-text-muted)",
               }}
             >
-              28 chokepoints monitored
+              6 chokepoints monitored
             </span>
             <span className="w-px h-3 bg-white/10" />
             <span
