@@ -67,7 +67,7 @@ export function CarrierTableCard({ carriers }: CarrierTableCardProps) {
             border: "none",
             cursor: "pointer",
             fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "10px",
+            fontSize: "9px",
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: "rgba(255, 255, 255, 0.5)",
@@ -88,7 +88,7 @@ export function CarrierTableCard({ carriers }: CarrierTableCardProps) {
             border: "none",
             cursor: "pointer",
             fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "10px",
+            fontSize: "9px",
             letterSpacing: "0.1em",
             textTransform: "uppercase",
             color: "rgba(255, 255, 255, 0.5)",
@@ -115,9 +115,12 @@ export function CarrierTableCard({ carriers }: CarrierTableCardProps) {
             <span
               style={{
                 fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                fontSize: "13px",
+                fontSize: "12px",
                 fontWeight: 500,
                 color: "#ffffff",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
               {carrier.name}
@@ -144,7 +147,7 @@ export function CarrierTableCard({ carriers }: CarrierTableCardProps) {
               <span
                 style={{
                   fontFamily: "var(--font-mono), ui-monospace, monospace",
-                  fontSize: "10px",
+                  fontSize: "9px",
                   color: getExposureColor(carrier.exposure),
                   minWidth: "28px",
                   textAlign: "right",

@@ -195,6 +195,7 @@ function FloatingChatPanel({
   onSubmit,
   isExpanded,
   setIsExpanded,
+  onClose,
 }: {
   messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>;
   input: string;
@@ -204,6 +205,7 @@ function FloatingChatPanel({
   onSubmit: (e: React.FormEvent) => void;
   isExpanded: boolean;
   setIsExpanded: (v: boolean) => void;
+  onClose: () => void;
 }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -251,25 +253,41 @@ function FloatingChatPanel({
         >
           Conversation
         </span>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          style={{
-            background: "none",
-            border: "none",
-            color: "rgba(255, 255, 255, 0.5)",
-            cursor: "pointer",
-            padding: "4px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {isExpanded ? (
-            <ChevronDown className="w-4 h-4" />
-          ) : (
-            <ChevronUp className="w-4 h-4" />
-          )}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255, 255, 255, 0.5)",
+              cursor: "pointer",
+              padding: "4px",
+              fontSize: "18px",
+            }}
+            title="Exit Fullscreen"
+          >
+            ×
+          </button>
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255, 255, 255, 0.5)",
+              cursor: "pointer",
+              padding: "4px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {isExpanded ? (
+              <ChevronDown className="w-4 h-4" />
+            ) : (
+              <ChevronUp className="w-4 h-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -431,6 +449,8 @@ function ChatPanel({
   messagesEndRef,
   isSidebarOpen,
   onToggleSidebar,
+  hasGlobe,
+  globeVersion,
 }: {
   messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>;
   input: string;
@@ -443,12 +463,14 @@ function ChatPanel({
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
+  hasGlobe: boolean;
+  globeVersion: number;
 }) {
   return (
-    <div 
+    <div
       className="relative z-10 flex flex-col h-full transition-all duration-300 ease-in-out"
       style={{
-        marginRight: isSidebarOpen ? "320px" : "0",
+        marginRight: isSidebarOpen ? "380px" : "0",
       }}
     >
       <header
@@ -474,6 +496,48 @@ function ChatPanel({
           >
             Session Active
           </p>
+          {hasGlobe && (
+            <button
+              onClick={onToggleSidebar}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "6px 12px",
+                backgroundColor: isSidebarOpen ? "rgba(34, 211, 238, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                border: `1px solid ${isSidebarOpen ? "rgba(34, 211, 238, 0.5)" : "rgba(255, 255, 255, 0.1)"}`,
+                borderRadius: "6px",
+                cursor: "pointer",
+                transition: "all 150ms ease",
+              }}
+            >
+              <svg
+                className="w-4 h-4"
+                style={{ color: isSidebarOpen ? "#22d3ee" : "rgba(255, 255, 255, 0.5)" }}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2 12h20" />
+              </svg>
+              {globeVersion > 0 && (
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono), ui-monospace, monospace",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    color: isSidebarOpen ? "#22d3ee" : "rgba(255, 255, 255, 0.5)",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  V{globeVersion}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </header>
 
@@ -812,23 +876,25 @@ function ChatContent() {
 
   return (
     <>
-      <GlobeSidebar
-        globeState={globeState}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        entityInfos={entityInfos}
-        selectedEntityId={selectedPinId}
-        onEntitySelect={handleEntitySelect}
-        ports={ports}
-        chokepoints={chokepoints}
-        routes={routes}
-        onClearFilters={handleClearFilters}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-        highlightedEntities={highlightedEntities}
-        highlightedRouteIds={highlightedRouteIds}
-        onPinClick={setSelectedPinId}
-      />
+      {!isFullscreen && (
+        <GlobeSidebar
+          globeState={globeState}
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          entityInfos={entityInfos}
+          selectedEntityId={selectedPinId}
+          onEntitySelect={handleEntitySelect}
+          ports={ports}
+          chokepoints={chokepoints}
+          routes={routes}
+          onClearFilters={handleClearFilters}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+          highlightedEntities={highlightedEntities}
+          highlightedRouteIds={highlightedRouteIds}
+          onPinClick={setSelectedPinId}
+        />
+      )}
 
       <AnimatePresence>
         {isFullscreen && (
@@ -841,6 +907,7 @@ function ChatContent() {
             onSubmit={handleFormSubmit}
             isExpanded={isChatExpanded}
             setIsExpanded={setIsChatExpanded}
+            onClose={() => setIsFullscreen(false)}
           />
         )}
       </AnimatePresence>
@@ -858,6 +925,8 @@ function ChatContent() {
           messagesEndRef={messagesEndRef}
           isSidebarOpen={isSidebarOpen}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          hasGlobe={globeState !== null}
+          globeVersion={globeState?.version ?? 0}
         />
       )}
     </>

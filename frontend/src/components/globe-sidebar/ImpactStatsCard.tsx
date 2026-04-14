@@ -40,7 +40,7 @@ export function ImpactStatsCard({ vessels, routes, costUsd, customMetric }: Impa
           <div
             style={{
               fontFamily: "var(--font-mono), ui-monospace, monospace",
-              fontSize: "10px",
+              fontSize: "9px",
               letterSpacing: "0.1em",
               textTransform: "uppercase",
               color: "rgba(255, 255, 255, 0.4)",
@@ -52,7 +52,7 @@ export function ImpactStatsCard({ vessels, routes, costUsd, customMetric }: Impa
           <div
             style={{
               fontFamily: "var(--font-outfit), system-ui, sans-serif",
-              fontSize: i === 2 ? "16px" : "18px",
+              fontSize: i === 2 ? "14px" : "16px",
               fontWeight: 600,
               color: i === 2 ? "#22d3ee" : "#ffffff",
             }}
