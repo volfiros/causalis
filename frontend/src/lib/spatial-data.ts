@@ -44,15 +44,23 @@ const cache: SpatialDataCache = {
   initialized: false,
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+
+function getApiBase(): string {
+  if (API_BASE) return API_BASE;
+  if (typeof window !== "undefined") return "";
+  return "http://localhost:8000";
+}
 
 export async function fetchSpatialData(): Promise<void> {
   if (cache.initialized) return;
 
+  const base = getApiBase();
+
   const [portsRes, chokepointsRes, routesRes] = await Promise.all([
-    fetch(`${API_BASE}/v1/spatial/ports`),
-    fetch(`${API_BASE}/v1/spatial/chokepoints`),
-    fetch(`${API_BASE}/v1/spatial/routes`),
+    fetch(`${base}/api/spatial/ports`),
+    fetch(`${base}/api/spatial/chokepoints`),
+    fetch(`${base}/api/spatial/routes`),
   ]);
 
   if (!portsRes.ok) throw new Error(`Failed to fetch ports: ${portsRes.status}`);

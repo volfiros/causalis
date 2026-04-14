@@ -54,7 +54,13 @@ export interface SimulationData {
   cascade: SimulationCascade;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+
+function getApiBase(): string {
+  if (API_BASE) return API_BASE;
+  if (typeof window !== "undefined") return "";
+  return "http://localhost:8000";
+}
 
 let simulationCache = new Map<string, SimulationData>();
 
@@ -82,7 +88,7 @@ export function useSimulation(entities: string[], severity: string = "full") {
 
     try {
       const res = await fetch(
-        `${API_BASE}/v1/simulate?chokepoints=${encodeURIComponent(chokepoints)}&severity=${encodeURIComponent(sev)}`
+        `${getApiBase()}/api/simulate?chokepoints=${encodeURIComponent(chokepoints)}&severity=${encodeURIComponent(sev)}`
       );
       if (!res.ok) throw new Error(`Simulation failed: ${res.status}`);
       const result: SimulationData = await res.json();

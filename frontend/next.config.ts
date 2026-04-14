@@ -40,6 +40,14 @@ const nextConfig: NextConfig = {
         source: "/api/chat/stream",
         destination: `${backendUrl}/v1/chat/stream`,
       },
+      {
+        source: "/api/spatial/:path*",
+        destination: `${backendUrl}/v1/spatial/:path*`,
+      },
+      {
+        source: "/api/simulate",
+        destination: `${backendUrl}/v1/simulate`,
+      },
     ];
   },
 };
