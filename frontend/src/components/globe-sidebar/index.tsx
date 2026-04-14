@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { GlobeEventPayload } from "@/lib/globe-events";
 import { SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
+import SideGlobe from "@/components/SideGlobe";
 import { VersionPanel } from "./VersionPanel";
 import { Menus } from "./Menus";
 import { PinDetails } from "./PinDetails";
@@ -46,6 +47,9 @@ interface GlobeSidebarProps {
   onClearFilters?: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  highlightedEntities?: string[];
+  highlightedRouteIds?: string[];
+  onPinClick?: (pinId: string | null) => void;
 }
 
 export function GlobeSidebar({
@@ -62,6 +66,9 @@ export function GlobeSidebar({
   onClearFilters,
   isFullscreen = false,
   onToggleFullscreen,
+  highlightedEntities = [],
+  highlightedRouteIds = [],
+  onPinClick,
 }: GlobeSidebarProps) {
   const selectedPort = selectedEntityId ? ports.find(p => p.id === selectedEntityId) ?? null : null;
   const selectedChokepoint = selectedEntityId ? chokepoints.find(cp => cp.id === selectedEntityId) ?? null : null;
@@ -125,6 +132,26 @@ export function GlobeSidebar({
                 ×
               </button>
             </div>
+          </div>
+
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              height: "240px",
+              marginBottom: "16px",
+              borderRadius: "8px",
+              overflow: "hidden",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+            }}
+          >
+            <SideGlobe
+              highlightedEntities={highlightedEntities}
+              highlightedRouteIds={highlightedRouteIds}
+              selectedPinId={selectedEntityId}
+              onPinClick={onPinClick}
+              dpr={1}
+            />
           </div>
 
           <VersionPanel version={globeState.version} />

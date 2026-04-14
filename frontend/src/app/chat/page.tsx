@@ -3,10 +3,9 @@
 import { useRef, useEffect, useState, useMemo, Component, type ErrorInfo, type ReactNode } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
-import { Send, Globe, ChevronDown, ChevronUp } from "lucide-react";
+import { Send, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Renderer, type Library } from "@openuidev/react-lang";
-import SideGlobe from "@/components/SideGlobe";
 import { library } from "@/lib/openui-library";
 import { GlobeEventPayload, subscribeToGlobeEvents } from "@/lib/globe-events";
 import {
@@ -121,55 +120,6 @@ function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: nu
     >
       {children}
     </div>
-  );
-}
-
-function GlobeNavButton({
-  version,
-  isOpen,
-  hasGlobe,
-  onClick,
-}: {
-  version: number;
-  isOpen: boolean;
-  hasGlobe: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={!hasGlobe}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "8px 12px",
-        backgroundColor: isOpen ? "rgba(34, 211, 238, 0.15)" : "rgba(255, 255, 255, 0.03)",
-        border: `1px solid ${isOpen ? "rgba(34, 211, 238, 0.5)" : hasGlobe ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.05)"}`,
-        borderRadius: "6px",
-        cursor: hasGlobe ? "pointer" : "not-allowed",
-        transition: "all 300ms ease",
-        opacity: hasGlobe ? 1 : 0.4,
-      }}
-    >
-      <Globe
-        className="w-4 h-4"
-        style={{ color: isOpen ? "#22d3ee" : hasGlobe ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.3)" }}
-      />
-      {version > 0 && (
-        <span
-          style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            fontSize: "10px",
-            fontWeight: 600,
-            color: isOpen ? "#22d3ee" : hasGlobe ? "rgba(255, 255, 255, 0.7)" : "rgba(255, 255, 255, 0.3)",
-            letterSpacing: "0.05em",
-          }}
-        >
-          V{version}
-        </span>
-      )}
-    </button>
   );
 }
 
@@ -424,8 +374,6 @@ function ChatPanel({
   handleSuggestion,
   messagesEndRef,
   isSidebarOpen,
-  globeVersion,
-  hasGlobe,
   onToggleSidebar,
 }: {
   messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>;
@@ -438,8 +386,6 @@ function ChatPanel({
   handleSuggestion: (text: string) => void;
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   isSidebarOpen: boolean;
-  globeVersion: number;
-  hasGlobe: boolean;
   onToggleSidebar: () => void;
 }) {
   return (
@@ -472,12 +418,6 @@ function ChatPanel({
           >
             Session Active
           </p>
-          <GlobeNavButton
-            version={globeVersion}
-            isOpen={isSidebarOpen}
-            hasGlobe={hasGlobe}
-            onClick={onToggleSidebar}
-          />
         </div>
       </header>
 
@@ -822,19 +762,10 @@ function ChatContent() {
   };
 
   const highlightedEntities = globeState?.entities ?? [];
-  const currentVersion = globeState?.version ?? 0;
-  const dpr = isFullscreen ? 1.5 : 1;
+
 
   return (
     <>
-      <SideGlobe
-        highlightedEntities={highlightedEntities}
-        highlightedRouteIds={highlightedRouteIds}
-        selectedPinId={selectedPinId}
-        onPinClick={setSelectedPinId}
-        dpr={dpr}
-      />
-
       <GlobeSidebar
         globeState={globeState}
         isOpen={isSidebarOpen}
@@ -848,6 +779,9 @@ function ChatContent() {
         onClearFilters={handleClearFilters}
         isFullscreen={isFullscreen}
         onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+        highlightedEntities={highlightedEntities}
+        highlightedRouteIds={highlightedRouteIds}
+        onPinClick={setSelectedPinId}
       />
 
       <AnimatePresence>
@@ -865,16 +799,6 @@ function ChatContent() {
         )}
       </AnimatePresence>
 
-      <div className="absolute inset-0 pointer-events-none">
-        <div
-          className="h-full w-full"
-          style={{
-            background:
-              "linear-gradient(to right, #000 0%, #000 25%, rgba(0,0,0,0.9) 40%, rgba(0,0,0,0.6) 50%, transparent 70%)",
-          }}
-        />
-      </div>
-
       {!isFullscreen && (
         <ChatPanel
           messages={messages}
@@ -887,8 +811,6 @@ function ChatContent() {
           handleSuggestion={handleSuggestion}
           messagesEndRef={messagesEndRef}
           isSidebarOpen={isSidebarOpen}
-          globeVersion={currentVersion}
-          hasGlobe={globeState !== null}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
       )}
