@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useEffect, useState, useMemo } from "react";
+import { useRef, useEffect, useState, useMemo, Component, type ErrorInfo, type ReactNode } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
 import { Send, Globe, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Renderer } from "@openuidev/react-lang";
+import { Renderer, type Library } from "@openuidev/react-lang";
 import SideGlobe from "@/components/SideGlobe";
 import { library } from "@/lib/openui-library";
 import { GlobeEventPayload, subscribeToGlobeEvents } from "@/lib/globe-events";
@@ -21,6 +21,50 @@ import {
   SpatialRoute,
 } from "@/lib/spatial-data";
 import { GlobeSidebar, EntityInfo } from "@/components/globe-sidebar";
+
+class RendererErrorBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.warn("[openui] Renderer error:", error.message);
+  }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+function OpenUIRenderer({
+  response,
+  library,
+  isStreaming,
+  fallback,
+}: {
+  response: string;
+  library: Library;
+  isStreaming: boolean;
+  fallback: ReactNode;
+}) {
+  const [hasRoot, setHasRoot] = useState(false);
+  return (
+    <RendererErrorBoundary fallback={fallback}>
+      {hasRoot ? null : fallback}
+      <div style={hasRoot ? undefined : { display: "none" }}>
+        <Renderer
+          response={response}
+          library={library}
+          isStreaming={isStreaming}
+          onError={() => {}}
+          onParseResult={(result) => {
+            setHasRoot(!!result?.root);
+          }}
+        />
+      </div>
+    </RendererErrorBoundary>
+  );
+}
 
 const SUGGESTIONS = [
   "What if Suez Canal is blocked?",
@@ -487,10 +531,22 @@ function ChatPanel({
                         {getMessageText(msg)}
                       </p>
                     ) : (
-                      <Renderer
+                      <OpenUIRenderer
                         response={getMessageText(msg)}
                         library={library}
                         isStreaming={isLoading && msg.id === messages[messages.length - 1]?.id}
+                        fallback={
+                          <p
+                            className="text-sm leading-relaxed"
+                            style={{
+                              fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                              color: "rgba(255, 255, 255, 0.9)",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {getMessageText(msg)}
+                          </p>
+                        }
                       />
                     )}
                   </div>

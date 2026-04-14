@@ -72,7 +72,7 @@ export function computeArcsFromRoutes(
       startLng: origin.longitude,
       endLat: dest.latitude,
       endLng: dest.longitude,
-      color: isAffected ? "#3b82f6" : "rgba(255,255,255,0.08)",
+      color: isAffected ? "#3b82f6" : "#ffffff",
       animated: isAffected,
       width: isAffected ? 2 : 1,
       routeId: route.id,

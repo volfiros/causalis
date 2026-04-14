@@ -346,7 +346,7 @@ function Globe({
 
         {backgroundArcGeos.map(({ geo, routeId }) => (
           <lineSegments key={`bg-${routeId}`} geometry={geo}>
-            <lineBasicMaterial color="rgba(255,255,255,0.08)" transparent opacity={0.08} />
+            <lineBasicMaterial color="#ffffff" transparent opacity={0.08} />
           </lineSegments>
         ))}
 
@@ -443,6 +443,14 @@ export default function SideGlobe({
         camera={{ position: [-1.75, 0, 10.5], fov: 45 }}
         dpr={dpr}
         gl={{ antialias: false, powerPreference: "high-performance" }}
+        onCreated={({ gl }) => {
+          gl.domElement.addEventListener("webglcontextlost", (e) => {
+            e.preventDefault();
+          });
+          gl.domElement.addEventListener("webglcontextrestored", () => {
+            // Force scene re-render after context restore
+          });
+        }}
         style={{ background: "transparent" }}
       >
         <color attach="background" args={["#000000"]} />

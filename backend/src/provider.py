@@ -102,7 +102,8 @@ async def chat_stream(request: ChatRequest):
         return StreamingResponse(no_key(), media_type="text/event-stream")
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+    model = genai.GenerativeModel(model_name)
 
     async def text_stream():
         try:
