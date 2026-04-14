@@ -79,31 +79,39 @@ def build_prompt(
 ### Cascade Impact Timeline
 {timeline_text}
 
-{rag_section}## OpenUI Component Syntax
-Use OpenUI Lang to structure your response when displaying data. Wrap data visualizations in component syntax:
-
-root = Stack([
-  ImpactStats(vessels={sim_dict['scenario']['affected_vessels']}, routes=47, cost_usd=2_400_000),
-  CarrierTable(carriers=[{{'name': 'MSC', 'exposure': 0.92}}, {{'name': 'Maersk', 'exposure': 0.87}}]),
-  GlobeVersion(version=1, entities={globe_entities_text})
-])
+{rag_section}## OpenUI Lang Syntax
+You MUST respond using OpenUI Lang. Every response must start with:
+root = Stack([...])
 
 Available components:
-- ImpactStats(vessels: int, routes: int, cost_usd: int) - High-level metrics grid
-- CarrierTable(carriers: list[dict]) - Carrier exposure ranking with name and exposure score
-- ReroutingCard(route_id: str, additional_days: int, additional_cost_usd: int, vessels_affected: int) - Route alternative info
-- PortCongestion(port_id: str, baseline: float, forecast: float, dwell_increase_hours: float) - Port congestion forecast
-- CascadeTimeline(timeline: list[dict]) - Port impact timeline with hours_to_impact
-- GlobeVersion(version: int, entities: list[str]) - Trigger globe visualization with the relevant chokepoints and ports (always use version=1)
-- TextBlock(text: str) - Narrative text explanation
+- Stack(children: list) — vertical layout container
+- ImpactStats(vessels: int, routes: int, cost_usd: int) — high-level metrics grid
+- CarrierTable(carriers: list[dict]) — carrier exposure ranking with name and exposure score
+- ReroutingCard(route_id: str, additional_days: int, additional_cost_usd: int, vessels_affected: int) — route alternative info
+- PortCongestion(port_id: str, baseline: float, forecast: float, dwell_increase_hours: float) — port congestion forecast
+- CascadeTimeline(timeline: list[dict]) — port impact timeline with hours_to_impact
+- GlobeVersion(version: int, entities: list[str]) — trigger globe visualization (always use version=1)
+- TextBlock(text: str) — narrative text explanation
+
+Syntax rules:
+1. ALWAYS start with: root = Stack([...])
+2. Use TextBlock for narrative text: TextBlock(text="Your explanation here")
+3. Use GlobeVersion for spatial references: GlobeVersion(version=1, entities=["suez_canal"])
+4. Combine components in a Stack: root = Stack([TextBlock(text="..."), ImpactStats(vessels=125, routes=47, cost_usd=2400000)])
+5. Arguments are POSITIONAL — do NOT use keyword: syntax
+
+Example:
+root = Stack([
+  TextBlock(text="The Suez blockage affects " + str(vessels) + " vessels..."),
+  ImpactStats(vessels={sim_dict['scenario']['affected_vessels']}, routes=47, cost_usd=2_400_000),
+  GlobeVersion(version=1, entities={globe_entities_text})
+])
 
 ## Spatial Entities
 Use these exact entity ids when rendering GlobeVersion:
 {globe_entities_text}
 
 ## Output Format
-Structure your response using OpenUI components when data is available. For narrative explanations, use TextBlock.
-Example: root = Stack([TextBlock(text="The Suez blockage affects 125 vessels..."), ImpactStats(vessels=125, routes=47, cost_usd=2_400_000), GlobeVersion(version=1, entities={globe_entities_text})])
-
+IMPORTANT: Your ENTIRE response must be valid OpenUI Lang starting with root = Stack([...]). Do NOT output plain text, markdown, or explanations outside of OpenUI Lang syntax.
 Use specific numbers from the simulation data above. Be concise and factual.
 """

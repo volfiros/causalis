@@ -36,6 +36,17 @@ class RendererErrorBoundary extends Component<{ fallback: ReactNode; children: R
   }
 }
 
+function sanitizeOpenUIResponse(response: string): string {
+  let text = response.trim();
+  const codeBlockMatch = text.match(/```(?:openui|openui-lang)?\n([\s\S]*?)```/);
+  if (codeBlockMatch) text = codeBlockMatch[1].trim();
+  if (!text.startsWith("root =")) {
+    const rootMatch = text.match(/(root\s*=\s*Stack\([\s\S]*)/);
+    if (rootMatch) text = rootMatch[1];
+  }
+  return text;
+}
+
 function OpenUIRenderer({
   response,
   library,
@@ -48,12 +59,13 @@ function OpenUIRenderer({
   fallback: ReactNode;
 }) {
   const [hasRoot, setHasRoot] = useState(false);
+  const sanitized = useMemo(() => sanitizeOpenUIResponse(response), [response]);
   return (
     <RendererErrorBoundary fallback={fallback}>
       {hasRoot ? null : fallback}
       <div style={hasRoot ? undefined : { display: "none" }}>
         <Renderer
-          response={response}
+          response={sanitized}
           library={library}
           isStreaming={isStreaming}
           onError={() => {}}
