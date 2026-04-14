@@ -155,8 +155,8 @@ export function GlobeSidebar({
         style={{
           position: "absolute",
           inset: 0,
-          top: "-8%",
-          bottom: "8%",
+          top: "-5%",
+          bottom: "5%",
           zIndex: 0,
           background: "radial-gradient(ellipse at center, rgba(10, 10, 30, 0.9) 0%, rgba(0, 0, 0, 1) 70%)",
         }}
