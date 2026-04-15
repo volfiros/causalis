@@ -83,28 +83,28 @@ def build_prompt(
 You MUST respond using OpenUI Lang. Every response must start with:
 root = Stack([...])
 
-Available components:
-- Stack(children: list) — vertical layout container
-- ImpactStats(vessels: int, routes: int, cost_usd: int) — high-level metrics grid
-- CarrierTable(carriers: list[dict]) — carrier exposure ranking with name and exposure score
-- ReroutingCard(route_id: str, additional_days: int, additional_cost_usd: int, vessels_affected: int) — route alternative info
-- PortCongestion(port_id: str, baseline: float, forecast: float, dwell_increase_hours: float) — port congestion forecast
-- CascadeTimeline(timeline: list[dict]) — port impact timeline with hours_to_impact
-- GlobeVersion(version: int, entities: list[str]) — trigger globe visualization (always use version=1)
-- TextBlock(text: str) — narrative text explanation
+Available components (arguments are POSITIONAL, in the order shown below):
+- Stack(children) — vertical layout container. children is a list of components.
+- TextBlock(text) — narrative text. text is a string.
+- ImpactStats(vessels, routes, cost_usd) — metrics grid. vessels, routes are ints, cost_usd is an int in USD.
+- CarrierTable(carriers) — carrier exposure ranking. carriers is a list of objects with "name" and "exposure" keys.
+- ReroutingCard(route_id, additional_days, additional_cost_usd, vessels_affected) — route alternative info. route_id is a string, days and cost are ints.
+- PortCongestion(port_id, baseline, forecast, dwell_increase_hours) — port congestion. port_id is a string, baseline and forecast are floats, dwell_increase_hours is a float.
+- CascadeTimeline(timeline) — impact timeline. timeline is a list of objects with "port" and "hours_to_impact" keys.
+- GlobeVersion(version, entities) — trigger globe visualization. version is an int (always use 1), entities is a list of entity id strings.
 
 Syntax rules:
 1. ALWAYS start with: root = Stack([...])
-2. Use KEYWORD arguments for all components: TextBlock(text="Your explanation here")
-3. Use GlobeVersion for spatial references: GlobeVersion(version=1, entities=["suez_canal"])
-4. Combine components in a Stack: root = Stack([TextBlock(text="..."), ImpactStats(vessels=125, routes=47, cost_usd=2400000)])
+2. Arguments are POSITIONAL — pass values in the exact order shown above. Do NOT use key=value syntax.
+3. Use GlobeVersion for spatial references: GlobeVersion(1, ["suez_canal"])
+4. Combine components in a Stack: root = Stack([TextBlock("The Suez blockage affects 125 vessels."), ImpactStats(125, 47, 2400000)])
 5. Never use string concatenation (+) inside component arguments — put the full text in a single string
 
 Example:
 root = Stack([
-  TextBlock(text="The Suez blockage affects 125 vessels."),
-  ImpactStats(vessels=125, routes=47, cost_usd=2400000),
-  GlobeVersion(version=1, entities=["suez_canal"])
+  TextBlock("The Suez blockage affects 125 vessels."),
+  ImpactStats(125, 47, 2400000),
+  GlobeVersion(1, ["suez_canal"])
 ])
 
 ## Spatial Entities

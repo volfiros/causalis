@@ -91,29 +91,45 @@ function OpenUIRenderer({
   isStreaming: boolean;
 }) {
   const [parseState, setParseState] = useState<"streaming" | "success" | "failed">("streaming");
+  const hasRootRef = useRef(false);
   const sanitized = useMemo(() => sanitizeOpenUIResponse(response), [response]);
-  const responseKey = useMemo(() => (response.length > 0 ? response.slice(0, 50) : "empty"), [response]);
 
-  // Reset state when response changes (new message)
+  // Reset state when streaming starts (new message). isStreaming transitions
+  // false→true once per message, so this effect fires exactly once per turn.
+  // During streaming, isStreaming stays true, so onParseResult can safely set
+  // hasRootRef without being clobbered by a subsequent reset.
   useEffect(() => {
-    setParseState("streaming");
-  }, [responseKey]);
+    if (isStreaming) {
+      setParseState("streaming");
+      hasRootRef.current = false;
+    }
+  }, [isStreaming]);
 
-  // After streaming ends, give the Renderer time to parse.
-  // Only mark as failed if Renderer never reported success.
+  // After streaming ends, mark as failed only if Renderer never reported a valid root.
+  // Use a ref so the timeout always sees the current value.
   useEffect(() => {
-    if (!isStreaming && parseState === "streaming") {
+    if (!isStreaming && !hasRootRef.current) {
       const timer = setTimeout(() => {
-        setParseState((prev) => (prev === "streaming" ? "failed" : prev));
+        if (!hasRootRef.current) {
+          setParseState("failed");
+        }
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [isStreaming, parseState]);
+  }, [isStreaming]);
 
   // DEBUG: log what Renderer is seeing
   useEffect(() => {
-    console.log("[OpenUIRenderer]", { parseState, isStreaming, responseLen: response.length, sanitizedStart: sanitized.slice(0, 80) });
+    console.log("[OpenUIRenderer]", { parseState, hasRoot: hasRootRef.current, isStreaming, responseLen: response.length, sanitizedStart: sanitized.slice(0, 80) });
   }, [parseState, isStreaming, response.length, sanitized]);
+
+  // Log full raw response when streaming ends
+  useEffect(() => {
+    if (!isStreaming && response.length > 0) {
+      console.log("[OpenUIRenderer] FULL RAW RESPONSE:", response);
+      console.log("[OpenUIRenderer] FULL SANITIZED:", sanitized);
+    }
+  }, [isStreaming]);
 
   const fallback = (
     <p
@@ -128,8 +144,8 @@ function OpenUIRenderer({
     </p>
   );
 
-  // Only show text fallback after streaming completes AND parsing definitively failed
-  if (!isStreaming && parseState === "failed") {
+  // Only show text fallback after streaming completes AND parsing definitively failed with no root
+  if (!isStreaming && parseState === "failed" && !hasRootRef.current) {
     return <>{fallback}</>;
   }
 
@@ -141,14 +157,17 @@ function OpenUIRenderer({
         library={library}
         isStreaming={isStreaming}
         onError={(errors) => {
-          console.log("[OpenUIRenderer] onError", errors);
-          if (!isStreaming) {
-            setParseState((prev) => prev === "streaming" ? "failed" : prev);
+          console.log("[OpenUIRenderer] onError", errors.length);
+          if (errors.length > 0) {
+            errors.forEach((e: any) => console.log("  error:", e.code, e.component, e.message));
           }
         }}
         onParseResult={(result) => {
           console.log("[OpenUIRenderer] onParseResult", { hasRoot: !!result?.root, rootType: result?.root?.typeName });
-          if (result?.root) setParseState("success");
+          if (result?.root) {
+            hasRootRef.current = true;
+            setParseState("success");
+          }
         }}
       />
     </RendererErrorBoundary>
@@ -551,6 +570,7 @@ function ChatContent() {
 
   useEffect(() => {
     const unsubscribe = subscribeToGlobeEvents((payload) => {
+      console.log("[ChatContent] Received globe event", payload);
       const newEntityIds = payload.entities.filter((id) => !previousEntitiesRef.current.has(id));
       const hasNewEntities = newEntityIds.length > 0;
       const removedEntityIds = Array.from(previousEntitiesRef.current).filter(

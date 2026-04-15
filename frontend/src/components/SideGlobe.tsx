@@ -7,18 +7,7 @@ import { Html, OrbitControls } from "@react-three/drei";
 import { fetchSpatialData, getAllPorts, getAllChokepoints, getAllRoutes, SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
 import { buildArcGeometry, ArcData, computeArcsFromRoutes } from "@/lib/arc-utils";
 import { emitGlobeEvent } from "@/lib/globe-events";
-
-const R = 3;
-
-function latLng(lat: number, lng: number, r: number) {
-  const phi = (90 - lat) * (Math.PI / 180);
-  const theta = (lng + 180) * (Math.PI / 180);
-  return new THREE.Vector3(
-    -r * Math.sin(phi) * Math.cos(theta),
-    r * Math.cos(phi),
-    r * Math.sin(phi) * Math.sin(theta)
-  );
-}
+import { GLOBE_RADIUS, latLng, PIN_ALTITUDE, DOT_ALTITUDE, LAND_ALTITUDE, ARC_HEIGHT } from "@/lib/globe-constants";
 
 interface GeoFeature {
   type: string;
@@ -35,8 +24,8 @@ function buildLandGeometry(features: GeoFeature[]): THREE.BufferGeometry {
       const ring = polygon[0];
       if (!ring || ring.length < 2) continue;
       for (let i = 0; i < ring.length - 1; i++) {
-        const a = latLng(ring[i][1], ring[i][0], R * 1.003);
-        const b = latLng(ring[i + 1][1], ring[i + 1][0], R * 1.003);
+        const a = latLng(ring[i][1], ring[i][0], LAND_ALTITUDE);
+        const b = latLng(ring[i + 1][1], ring[i + 1][0], LAND_ALTITUDE);
         positions.push(a.x, a.y, a.z, b.x, b.y, b.z);
       }
     }
@@ -188,7 +177,7 @@ function Globe({
       const circumference = Math.cos((lat * Math.PI) / 180);
       const lngStep = Math.max(3, Math.round(3 / circumference));
       for (let lng = -180; lng < 180; lng += lngStep) {
-        const p = latLng(lat, lng, R * 1.001);
+        const p = latLng(lat, lng, DOT_ALTITUDE);
         pts.push(p.x, p.y, p.z);
       }
     }
@@ -214,14 +203,14 @@ function Globe({
 
   const backgroundArcGeos = useMemo(() => {
     return backgroundArcs.map(arc => ({
-      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.25, 32),
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], ARC_HEIGHT, 32),
       routeId: arc.routeId,
     }));
   }, [backgroundArcs]);
 
   const affectedArcGeos = useMemo(() => {
     return affectedArcs.map(arc => ({
-      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], R * 1.25, 32),
+      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], ARC_HEIGHT, 32),
       routeId: arc.routeId,
     }));
   }, [affectedArcs]);
@@ -230,7 +219,7 @@ function Globe({
     const pins: PinData[] = [];
     for (const port of ports) {
       pins.push({
-        position: latLng(port.latitude, port.longitude, R * 1.015),
+        position: latLng(port.latitude, port.longitude, PIN_ALTITUDE),
         id: port.id,
         name: port.name,
         type: "port",
@@ -238,7 +227,7 @@ function Globe({
     }
     for (const cp of chokepoints) {
       pins.push({
-        position: latLng(cp.latitude, cp.longitude, R * 1.015),
+        position: latLng(cp.latitude, cp.longitude, PIN_ALTITUDE),
         id: cp.id,
         name: cp.name,
         type: "chokepoint",
@@ -335,7 +324,7 @@ function Globe({
 
       <group ref={groupRef}>
         <mesh>
-          <sphereGeometry args={[R, 48, 48]} />
+          <sphereGeometry args={[GLOBE_RADIUS, 48, 48]} />
           <meshBasicMaterial color="#0a0a1a" />
         </mesh>
 
@@ -388,7 +377,7 @@ function Globe({
         </instancedMesh>
 
         <mesh scale={[1.05, 1.05, 1.05]}>
-          <sphereGeometry args={[R, 24, 24]} />
+          <sphereGeometry args={[GLOBE_RADIUS, 24, 24]} />
           <meshBasicMaterial color="#22d3ee" transparent opacity={0.02} side={THREE.BackSide} />
         </mesh>
       </group>
@@ -414,6 +403,7 @@ export interface SideGlobeProps {
   selectedPinId?: string | null;
   dpr?: number;
   showOnlyChokepoints?: boolean;
+  onReady?: () => void;
 }
 
 export default function SideGlobe({
@@ -424,12 +414,15 @@ export default function SideGlobe({
   selectedPinId,
   dpr = 1,
   showOnlyChokepoints = false,
+  onReady,
 }: SideGlobeProps) {
   const [countries, setCountries] = useState<GeoFeature[]>([]);
   const [ports, setPorts] = useState<SpatialPort[]>([]);
   const [chokepoints, setChokepoints] = useState<SpatialChokepoint[]>([]);
   const [routes, setRoutes] = useState<SpatialRoute[]>([]);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const readyNotified = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -454,6 +447,13 @@ export default function SideGlobe({
       .catch((err) => console.error("Failed to load spatial data:", err));
   }, []);
 
+  useEffect(() => {
+    if (dataLoaded && canvasReady && !readyNotified.current) {
+      readyNotified.current = true;
+      onReady?.();
+    }
+  }, [dataLoaded, canvasReady, onReady]);
+
   return (
     <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)", pointerEvents: "auto" }}>
       <Canvas
@@ -467,6 +467,7 @@ export default function SideGlobe({
           gl.domElement.addEventListener("webglcontextrestored", () => {
             // Force scene re-render after context restore
           });
+          setCanvasReady(true);
         }}
         style={{ background: "transparent" }}
       >

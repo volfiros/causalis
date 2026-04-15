@@ -519,6 +519,7 @@ export const Stack = defineComponent({
 
 function GlobeVersionButton({ version, entities }: { version: number; entities: string[] }) {
   useEffect(() => {
+    console.log("[GlobeVersion] emitGlobeEvent", { version, entities });
     emitGlobeEvent({ version, entities });
   }, [version, entities]);
 
