@@ -13,7 +13,6 @@ function RevealLine({
   delay?: number;
   className?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
@@ -22,17 +21,14 @@ function RevealLine({
   }, [delay]);
 
   return (
-    <div ref={ref} className="overflow-hidden">
-      <div
-        className={className}
-        style={{
-          transform: shown ? "translateY(0)" : "translateY(110%)",
-          opacity: shown ? 1 : 0,
-          transition: `transform 0.9s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms, opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
-        }}
-      >
-        {children}
-      </div>
+    <div
+      className={className}
+      style={{
+        clipPath: shown ? "inset(0 0 0 0)" : "inset(100% 0 0 0)",
+        transition: `clip-path 0.9s cubic-bezier(0.22, 1, 0.36, 1) ${delay}ms`,
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -144,14 +140,14 @@ export default function HomePage() {
           transition: "opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
+        {/* Globe layer - back */}
         <div
+          className="absolute pointer-events-auto"
           style={{
-            position: "absolute",
             top: "-5%",
             right: "5%",
             width: "60%",
             height: "110%",
-            zIndex: 20,
           }}
         >
           <SideGlobe
@@ -162,7 +158,8 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
+        {/* Gradient overlay - middle */}
+        <div className="absolute inset-0 pointer-events-none">
           <div
             className="h-full w-full"
             style={{
@@ -172,7 +169,8 @@ export default function HomePage() {
           />
         </div>
 
-        <div className="relative flex flex-col justify-between h-full px-12 lg:px-20 py-16" style={{ zIndex: 10, position: "relative", pointerEvents: "none" }}>
+        {/* Content layer - front */}
+        <div className="absolute inset-0 flex flex-col justify-between h-full px-12 lg:px-20 py-16" style={{ pointerEvents: "none" }}>
           <div />
 
           <div className="max-w-2xl">
