@@ -30,14 +30,12 @@ export async function POST(req: Request) {
   });
   console.log(`[api/chat/stream] Normalized last message: ${normalizedMessages[normalizedMessages.length - 1]?.content?.slice(0, 100)}`);
 
-  const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+  const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
   console.log(`[api/chat/stream] Proxying to: ${backendUrl}/v1/chat/stream`);
 
   const response = await fetch(`${backendUrl}/v1/chat/stream`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ messages: normalizedMessages }),
     signal: AbortSignal.timeout(30000),
   });

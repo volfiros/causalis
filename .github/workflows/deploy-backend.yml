@@ -38,4 +38,4 @@ jobs:
           cd hf-space
           git add -A
           git diff --cached --quiet || git commit -m "Deploy from GitHub: ${GITHUB_SHA::7}"
-          git push https://agaroth:${HF_TOKEN}@huggingface.co/spaces/agaroth/causales-backend
+          git push https://agaroth:${HF_TOKEN}@huggingface.co/spaces/agaroth/causalis-backend

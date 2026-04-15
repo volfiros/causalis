@@ -95,16 +95,16 @@ Available components:
 
 Syntax rules:
 1. ALWAYS start with: root = Stack([...])
-2. Use TextBlock for narrative text: TextBlock(text="Your explanation here")
+2. Use KEYWORD arguments for all components: TextBlock(text="Your explanation here")
 3. Use GlobeVersion for spatial references: GlobeVersion(version=1, entities=["suez_canal"])
 4. Combine components in a Stack: root = Stack([TextBlock(text="..."), ImpactStats(vessels=125, routes=47, cost_usd=2400000)])
-5. Arguments are POSITIONAL — do NOT use keyword: syntax
+5. Never use string concatenation (+) inside component arguments — put the full text in a single string
 
 Example:
 root = Stack([
-  TextBlock(text="The Suez blockage affects " + str(vessels) + " vessels..."),
-  ImpactStats(vessels={sim_dict['scenario']['affected_vessels']}, routes=47, cost_usd=2_400_000),
-  GlobeVersion(version=1, entities={globe_entities_text})
+  TextBlock(text="The Suez blockage affects 125 vessels."),
+  ImpactStats(vessels=125, routes=47, cost_usd=2400000),
+  GlobeVersion(version=1, entities=["suez_canal"])
 ])
 
 ## Spatial Entities

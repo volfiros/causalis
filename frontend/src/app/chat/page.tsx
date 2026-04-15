@@ -142,7 +142,9 @@ function OpenUIRenderer({
         isStreaming={isStreaming}
         onError={(errors) => {
           console.log("[OpenUIRenderer] onError", errors);
-          if (!isStreaming) setParseState("failed");
+          if (!isStreaming) {
+            setParseState((prev) => prev === "streaming" ? "failed" : prev);
+          }
         }}
         onParseResult={(result) => {
           console.log("[OpenUIRenderer] onParseResult", { hasRoot: !!result?.root, rootType: result?.root?.typeName });
@@ -293,7 +295,7 @@ function ChatPanel({
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto carrier-scroll">
         <div className="max-w-2xl mx-auto px-12 lg:px-20 py-12">
           {messages.length === 0 ? (
             <FadeIn delay={200}>
