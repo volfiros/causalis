@@ -3,6 +3,7 @@ export interface GlobeEventPayload {
   entities: string[];
   selectedEntityId?: string;
   highlightedRouteIds?: string[];
+  severity?: string;
 }
 
 type GlobeEventCallback = (payload: GlobeEventPayload) => void;

@@ -7,7 +7,7 @@ import { Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Renderer, type Library } from "@openuidev/react-lang";
 import { library } from "@/lib/openui-library";
-import { GlobeEventPayload, subscribeToGlobeEvents } from "@/lib/globe-events";
+import { GlobeEventPayload, subscribeToGlobeEvents, emitGlobeEvent } from "@/lib/globe-events";
 import { useSimulation } from "@/lib/use-simulation";
 import {
   getPortById,
@@ -179,6 +179,22 @@ const SUGGESTIONS = [
   "What happens if the Strait of Hormuz is blocked?",
   "Model a disruption at the Panama Canal",
 ];
+
+const SEVERITY_KEYWORDS: Record<string, string[]> = {
+  full: ["full blockage", "full closure", "completely blocked", "total closure", "shut down completely", "completely shut"],
+  temporary: ["temporary", "maintenance", "brief", "short-term", "reopening soon", "brief closure"],
+  partial: ["partial", "reduced capacity", "restricted", "attacks", "houthi", "drone", "missile", "disrupted"],
+};
+
+function detectSeverity(text: string): string {
+  const lower = text.toLowerCase();
+  for (const [level, keywords] of Object.entries(SEVERITY_KEYWORDS)) {
+    for (const kw of keywords) {
+      if (lower.includes(kw)) return level;
+    }
+  }
+  return "partial";
+}
 
 function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const [shown, setShown] = useState(false);
@@ -587,6 +603,13 @@ function ChatContent() {
       const eventPayload: GlobeEventPayload = {
         ...payload,
         version: clientVersionRef.current,
+        severity: (() => {
+          const lastUserMsg = messages.filter(m => m.role === "user").pop();
+          if (lastUserMsg) {
+            return detectSeverity(getMessageText(lastUserMsg));
+          }
+          return "partial";
+        })(),
       };
 
       setGlobeState(eventPayload);
@@ -652,7 +675,16 @@ function ChatContent() {
     }) ?? [];
   }, [globeState?.entities]);
 
-  const { data: simulationData, loading: simulationLoading } = useSimulation(simulationEntities, "full");
+  const simulationSeverity = useMemo(() => {
+    if (globeState?.severity) return globeState.severity;
+    const lastUserMsg = messages.filter(m => m.role === "user").pop();
+    if (lastUserMsg) {
+      return detectSeverity(getMessageText(lastUserMsg));
+    }
+    return "partial";
+  }, [globeState?.severity, messages]);
+
+  const { data: simulationData, loading: simulationLoading } = useSimulation(simulationEntities, simulationSeverity);
 
 
   return (
