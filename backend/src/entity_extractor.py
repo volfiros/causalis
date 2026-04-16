@@ -61,7 +61,7 @@ CARRIER_ALIASES = {
 }
 
 SEVERITY_KEYWORDS = {
-    "full": ["full blockage", "full closure", "completely blocked", "total closure", "shut down", "shut down completely", "completely shut"],
+    "full": ["full blockage", "completely blocked", "total closure", "shut down", "shut down completely", "completely shut"],
     "temporary": ["temporary", "maintenance", "brief", "short-term", "reopening soon", "brief closure"],
     "partial": ["partial", "reduced capacity", "restricted", "attacks", "houthi", "drone", "missile", "disrupted"],
 }
