@@ -117,6 +117,53 @@ log "${BOLD}All checks passed. Starting services...${RESET}"
 echo ""
 
 # ──────────────────────────────────────────────
+#  Check for processes on our ports
+# ──────────────────────────────────────────────
+
+check_port() {
+    local port=$1
+    local pids
+    pids=$(lsof -ti:"$port" 2>/dev/null || true)
+    if [ -z "$pids" ]; then
+        return 1
+    fi
+    echo "$pids"
+    return 0
+}
+
+for PORT in 8000 3000; do
+    STALE=$(check_port "$PORT") || continue
+    warn "Port $PORT is already in use by process(es): $(echo "$STALE" | tr '\n' ' ')"
+    echo -e "${YELLOW}Kill existing process(es) on port $PORT? [Y/n]${RESET} "
+    if [ -t 0 ]; then
+        read -r ANSWER
+    else
+        read -r ANSWER </dev/tty 2>/dev/null || { err "Cannot read input (not a terminal). Aborting."; exit 1; }
+    fi
+    case "$ANSWER" in
+        [yY]|[yY][eE][sS]|"")
+            log "Killing process(es) on port $PORT..."
+            echo "$STALE" | xargs kill -9 2>/dev/null || true
+            sleep 1
+            # Verify port is free
+            if check_port "$PORT" >/dev/null; then
+                err "Port $PORT is still in use after kill. Aborting."
+                exit 1
+            fi
+            ok "Port $PORT is now free"
+            ;;
+        [nN]|[nN][oO])
+            err "Cannot start services while port $PORT is in use. Aborting."
+            exit 1
+            ;;
+        *)
+            err "Invalid answer. Aborting."
+            exit 1
+            ;;
+    esac
+done
+
+# ──────────────────────────────────────────────
 #  Start Backend
 # ──────────────────────────────────────────────
 
