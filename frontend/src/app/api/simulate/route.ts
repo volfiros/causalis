@@ -3,11 +3,11 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const chokepoints = searchParams.get("chokepoints") || "";
-  const severity = searchParams.get("severity") || "full";
+  const message = searchParams.get("message") || "";
 
   try {
     const res = await fetch(
-      `${BACKEND_URL}/v1/simulate?chokepoints=${encodeURIComponent(chokepoints)}&severity=${encodeURIComponent(severity)}`,
+      `${BACKEND_URL}/v1/simulate?chokepoints=${encodeURIComponent(chokepoints)}&message=${encodeURIComponent(message)}`,
       { signal: AbortSignal.timeout(15000) }
     );
     if (!res.ok) {

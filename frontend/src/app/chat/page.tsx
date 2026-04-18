@@ -39,18 +39,15 @@ class RendererErrorBoundary extends Component<{ fallback: ReactNode; children: R
 
 function sanitizeOpenUIResponse(response: string): string {
   let text = response.trim();
-  
-  // Extract from markdown code blocks
+
   const codeBlockMatch = text.match(/```(?:openui|openui-lang)?\n([\s\S]*?)```/);
   if (codeBlockMatch) text = codeBlockMatch[1].trim();
-  
-  // Find root = Stack( even with indentation
+
   if (!text.match(/^root\s*=/m)) {
     const rootMatch = text.match(/(root\s*=\s*Stack\([\s\S]*)/);
     if (rootMatch) text = rootMatch[1];
   }
-  
-  // Normalize indentation - remove common leading whitespace
+
   const lines = text.split('\n');
   const nonEmptyLines = lines.filter(l => l.trim());
   if (nonEmptyLines.length > 1) {
@@ -94,10 +91,6 @@ function OpenUIRenderer({
   const hasRootRef = useRef(false);
   const sanitized = useMemo(() => sanitizeOpenUIResponse(response), [response]);
 
-  // Reset state when streaming starts (new message). isStreaming transitions
-  // false→true once per message, so this effect fires exactly once per turn.
-  // During streaming, isStreaming stays true, so onParseResult can safely set
-  // hasRootRef without being clobbered by a subsequent reset.
   useEffect(() => {
     if (isStreaming) {
       setParseState("streaming");
@@ -105,8 +98,6 @@ function OpenUIRenderer({
     }
   }, [isStreaming]);
 
-  // After streaming ends, mark as failed only if Renderer never reported a valid root.
-  // Use a ref so the timeout always sees the current value.
   useEffect(() => {
     if (!isStreaming && !hasRootRef.current) {
       const timer = setTimeout(() => {
@@ -118,12 +109,10 @@ function OpenUIRenderer({
     }
   }, [isStreaming]);
 
-  // DEBUG: log what Renderer is seeing
   useEffect(() => {
     console.log("[OpenUIRenderer]", { parseState, hasRoot: hasRootRef.current, isStreaming, responseLen: response.length, sanitizedStart: sanitized.slice(0, 80) });
   }, [parseState, isStreaming, response.length, sanitized]);
 
-  // Log full raw response when streaming ends
   useEffect(() => {
     if (!isStreaming && response.length > 0) {
       console.log("[OpenUIRenderer] FULL RAW RESPONSE:", response);
@@ -144,12 +133,10 @@ function OpenUIRenderer({
     </p>
   );
 
-  // Only show text fallback after streaming completes AND parsing definitively failed with no root
   if (!isStreaming && parseState === "failed" && !hasRootRef.current) {
     return <>{fallback}</>;
   }
 
-  // During streaming and after success: always use the Renderer
   return (
     <RendererErrorBoundary fallback={fallback}>
       <Renderer
@@ -179,22 +166,6 @@ const SUGGESTIONS = [
   "What happens if the Strait of Hormuz is blocked?",
   "Model a disruption at the Panama Canal",
 ];
-
-const SEVERITY_KEYWORDS: Record<string, string[]> = {
-  full: ["full blockage", "full closure", "completely blocked", "total closure", "shut down completely", "completely shut"],
-  temporary: ["temporary", "maintenance", "brief", "short-term", "reopening soon", "brief closure"],
-  partial: ["partial", "reduced capacity", "restricted", "attacks", "houthi", "drone", "missile", "disrupted"],
-};
-
-function detectSeverity(text: string): string {
-  const lower = text.toLowerCase();
-  for (const [level, keywords] of Object.entries(SEVERITY_KEYWORDS)) {
-    for (const kw of keywords) {
-      if (lower.includes(kw)) return level;
-    }
-  }
-  return "partial";
-}
 
 function FadeIn({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
   const [shown, setShown] = useState(false);
@@ -603,13 +574,6 @@ function ChatContent() {
       const eventPayload: GlobeEventPayload = {
         ...payload,
         version: clientVersionRef.current,
-        severity: (() => {
-          const lastUserMsg = messages.filter(m => m.role === "user").pop();
-          if (lastUserMsg) {
-            return detectSeverity(getMessageText(lastUserMsg));
-          }
-          return "partial";
-        })(),
       };
 
       setGlobeState(eventPayload);
@@ -675,16 +639,12 @@ function ChatContent() {
     }) ?? [];
   }, [globeState?.entities]);
 
-  const simulationSeverity = useMemo(() => {
-    if (globeState?.severity) return globeState.severity;
+  const simulationMessage = useMemo(() => {
     const lastUserMsg = messages.filter(m => m.role === "user").pop();
-    if (lastUserMsg) {
-      return detectSeverity(getMessageText(lastUserMsg));
-    }
-    return "partial";
-  }, [globeState?.severity, messages]);
+    return lastUserMsg ? getMessageText(lastUserMsg) : "";
+  }, [messages]);
 
-  const { data: simulationData, loading: simulationLoading } = useSimulation(simulationEntities, simulationSeverity);
+  const { data: simulationData, loading: simulationLoading } = useSimulation(simulationEntities, simulationMessage);
 
 
   return (

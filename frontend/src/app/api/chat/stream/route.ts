@@ -7,24 +7,22 @@ export async function POST(req: Request) {
   console.log(`[api/chat/stream] Last message:`, JSON.stringify(userMessage, null, 2));
   console.log(`[api/chat/stream] Message keys:`, Object.keys(userMessage || {}));
   const content = userMessage?.content || userMessage?.text || "";
-  // AI SDK may send parts array instead of content string
   let messageContent = content;
   if (!messageContent && userMessage?.parts) {
     messageContent = userMessage.parts
-      ?.filter((p: any) => p.type === 'text' && typeof p.text === 'string')
+      ?.filter((p: any) => p.type === "text" && typeof p.text === "string")
       ?.map((p: any) => p.text)
-      ?.join('') || '';
+      ?.join("") || "";
   }
   console.log(`[api/chat/stream] Extracted content: ${messageContent.slice(0, 100)}`);
 
-  // Reconstruct messages with proper content field for the Python backend
   const normalizedMessages = messages.map((msg: any) => {
-    let msgContent = msg.content || '';
+    let msgContent = msg.content || "";
     if (!msgContent && msg.parts) {
       msgContent = msg.parts
-        ?.filter((p: any) => p.type === 'text' && typeof p.text === 'string')
+        ?.filter((p: any) => p.type === "text" && typeof p.text === "string")
         ?.map((p: any) => p.text)
-        ?.join('') || '';
+        ?.join("") || "";
     }
     return { role: msg.role, content: msgContent };
   });
@@ -34,8 +32,8 @@ export async function POST(req: Request) {
   console.log(`[api/chat/stream] Proxying to: ${backendUrl}/v1/chat/stream`);
 
   const response = await fetch(`${backendUrl}/v1/chat/stream`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages: normalizedMessages }),
     signal: AbortSignal.timeout(30000),
   });
@@ -45,15 +43,15 @@ export async function POST(req: Request) {
   if (!response.ok) {
     const errorBody = await response.text();
     console.error(`[api/chat/stream] Backend error: ${errorBody.slice(0, 200)}`);
-    return new Response(JSON.stringify({ error: 'Backend request failed', detail: errorBody }), {
+    return new Response(JSON.stringify({ error: "Backend request failed", detail: errorBody }), {
       status: response.status,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   }
 
   const reader = response.body?.getReader();
   if (!reader) {
-    return new Response('No response body', { status: 500 });
+    return new Response("No response body", { status: 500 });
   }
 
   let totalChunks = 0;
@@ -74,7 +72,7 @@ export async function POST(req: Request) {
           controller.enqueue(new TextEncoder().encode(chunk));
         }
       } catch (error) {
-        console.error('[api/chat/stream] Stream error:', error);
+        console.error("[api/chat/stream] Stream error:", error);
       } finally {
         reader.releaseLock();
         controller.close();
@@ -85,9 +83,9 @@ export async function POST(req: Request) {
 
   return new Response(stream, {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
     },
   });
 }

@@ -140,7 +140,6 @@ export default function HomePage() {
           transition: "opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
-        {/* Globe layer - back */}
         <div
           className="absolute pointer-events-auto"
           style={{
@@ -158,7 +157,6 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Gradient overlay - middle */}
         <div className="absolute inset-0 pointer-events-none">
           <div
             className="h-full w-full"
@@ -169,7 +167,6 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Content layer - front */}
         <div className="absolute inset-0 flex flex-col justify-between h-full px-12 lg:px-20 py-16" style={{ pointerEvents: "none" }}>
           <div />
 

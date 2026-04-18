@@ -14,6 +14,7 @@ AVERAGE_SPEED_KNOTS = 14
 @dataclass
 class SimulationResult:
     scenario: dict
+    affected_routes: list
     rerouting: dict
     carriers: list
     port_congestion: list
@@ -25,6 +26,7 @@ class SimulationResult:
     def to_dict(self) -> dict:
         return {
             "scenario": self.scenario,
+            "affected_routes": self.affected_routes,
             "rerouting": self.rerouting,
             "carriers": self.carriers,
             "port_congestion": self.port_congestion,
@@ -63,6 +65,7 @@ class DisruptionSimulator:
                 "severity": severity,
                 "affected_vessels": affected_vessels,
             },
+            affected_routes=[{"id": r["id"], "name": r["name"], "origin_port_id": r["origin_port_id"], "destination_port_id": r["destination_port_id"]} for r in affected_routes],
             rerouting=rerouting,
             carriers=carriers,
             port_congestion=port_congestion,

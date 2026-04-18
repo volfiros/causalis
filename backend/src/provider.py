@@ -20,7 +20,7 @@ import google.generativeai as genai
 from src.world_model import MaritimeWorldModel
 from src.temporal_model import TemporalModel
 from src.simulator import DisruptionSimulator
-from src.entity_extractor import extract_entities
+from src.entity_extractor import extract_entities, _detect_severity
 from src.prompt_builder import build_prompt
 
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -60,6 +60,7 @@ def _get_world():
             raise
         try:
             from src.rag import MaritimeKnowledgeBase
+
             _kb = MaritimeKnowledgeBase()
         except Exception as e:
             print(f"[provider] Warning: RAG initialization failed: {e}")
@@ -85,12 +86,16 @@ async def chat_stream(request: ChatRequest):
     chokepoints = entities.get("chokepoints", [])
     ports = entities.get("ports", [])
     severity = entities.get("severity", "partial")
-    print(f"[provider] Entities: chokepoints={chokepoints}, ports={ports}, severity={severity}")
+    print(
+        f"[provider] Entities: chokepoints={chokepoints}, ports={ports}, severity={severity}"
+    )
 
     simulation = None
     if chokepoints:
         simulation = simulator.run_scenario(chokepoints, severity)
-        print(f"[provider] Simulation ran: {simulation is not None}, scenario={simulation.scenario if simulation else None}")
+        print(
+            f"[provider] Simulation ran: {simulation is not None}, scenario={simulation.scenario if simulation else None}"
+        )
     else:
         print(f"[provider] No chokepoints found — using fallback prompt")
 
@@ -119,16 +124,16 @@ async def chat_stream(request: ChatRequest):
             "- TextBlock(text) — narrative text. text is a string.\n"
             "- GlobeVersion(version, entities) — trigger globe visualization. version is int (use 1), entities is list of strings.\n"
             "- ImpactStats(vessels, routes, cost_usd) — metrics grid. vessels and routes are ints, cost_usd is int in USD.\n"
-            "- CarrierTable(carriers) — carrier table. carriers is a list of objects with \"name\" and \"exposure\" keys.\n"
+            '- CarrierTable(carriers) — carrier table. carriers is a list of objects with "name" and "exposure" keys.\n'
             "- ReroutingCard(route_id, additional_days, additional_cost_usd, vessels_affected) — route alternative.\n"
             "- PortCongestion(port_id, baseline, forecast, dwell_increase_hours) — congestion forecast.\n"
-            "- CascadeTimeline(timeline) — timeline with list of \"port\" and \"hours_to_impact\" objects.\n"
+            '- CascadeTimeline(timeline) — timeline with list of "port" and "hours_to_impact" objects.\n'
             f"{entity_instruction}\n"
             "Syntax rules:\n"
             "1. Always start with: root = Stack([...])\n"
             "2. Arguments are POSITIONAL — pass values in the order shown above. Do NOT use key=value syntax.\n"
-            "3. Use GlobeVersion for spatial references: GlobeVersion(1, [\"suez_canal\"])\n"
-            "4. Combine components in a Stack: root = Stack([TextBlock(\"Blockage causes delays\"), GlobeVersion(1, [\"suez_canal\"])])\n"
+            '3. Use GlobeVersion for spatial references: GlobeVersion(1, ["suez_canal"])\n'
+            '4. Combine components in a Stack: root = Stack([TextBlock("Blockage causes delays"), GlobeVersion(1, ["suez_canal"])])\n'
             "5. Never use string concatenation (+) inside component arguments\n\n"
             "Answer based on the reference material. If no simulation data is available, "
             "explain what you can do and ask the user to specify a chokepoint or route to simulate.\n"
@@ -138,8 +143,10 @@ async def chat_stream(request: ChatRequest):
 
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
+
         async def no_key():
             yield "[Set GEMINI_API_KEY in .env to enable LLM responses]"
+
         return StreamingResponse(no_key(), media_type="text/event-stream")
 
     genai.configure(api_key=api_key)
@@ -155,7 +162,9 @@ async def chat_stream(request: ChatRequest):
                 if chunk.text:
                     full_response += chunk.text
                     yield chunk.text
-            print(f"[provider] Response length: {len(full_response)}, starts with: {full_response[:80]}")
+            print(
+                f"[provider] Response length: {len(full_response)}, starts with: {full_response[:80]}"
+            )
         except Exception as e:
             print(f"[provider] Error: {e}")
             yield f"[Error: {e}]"
@@ -178,17 +187,19 @@ async def get_ports():
     world, _, _, _ = _get_world()
     ports = []
     for _, port in world._ports.iterrows():
-        ports.append({
-            "id": port["id"],
-            "name": port["name"],
-            "latitude": float(port["latitude"]),
-            "longitude": float(port["longitude"]),
-            "country": port["country"],
-            "type": port["type"],
-            "annual_teu": int(port["annual_teu"]),
-            "max_draft_meters": float(port["max_draft_meters"]),
-            "typical_dwell_hours": int(port["typical_dwell_hours"]),
-        })
+        ports.append(
+            {
+                "id": port["id"],
+                "name": port["name"],
+                "latitude": float(port["latitude"]),
+                "longitude": float(port["longitude"]),
+                "country": port["country"],
+                "type": port["type"],
+                "annual_teu": int(port["annual_teu"]),
+                "max_draft_meters": float(port["max_draft_meters"]),
+                "typical_dwell_hours": int(port["typical_dwell_hours"]),
+            }
+        )
     return {"ports": ports}
 
 
@@ -198,15 +209,17 @@ async def get_chokepoints():
     chokepoints = []
     for _, cp in world._chokepoints.iterrows():
         centroid = cp.geometry.centroid
-        chokepoints.append({
-            "id": cp["id"],
-            "name": cp["name"],
-            "latitude": centroid.y,
-            "longitude": centroid.x,
-            "type": cp["type"],
-            "daily_vessels": int(cp["daily_vessels"]),
-            "strategic_importance": int(cp["strategic_importance"]),
-        })
+        chokepoints.append(
+            {
+                "id": cp["id"],
+                "name": cp["name"],
+                "latitude": centroid.y,
+                "longitude": centroid.x,
+                "type": cp["type"],
+                "daily_vessels": int(cp["daily_vessels"]),
+                "strategic_importance": int(cp["strategic_importance"]),
+            }
+        )
     return {"chokepoints": chokepoints}
 
 
@@ -215,24 +228,37 @@ async def get_routes():
     world, _, _, _ = _get_world()
     routes = []
     for _, route in world._routes.iterrows():
-        routes.append({
-            "id": route["id"],
-            "name": route["name"],
-            "origin_port_id": route["origin_port_id"],
-            "destination_port_id": route["destination_port_id"],
-            "chokepoints_transited": route["chokepoints_transited"],
-            "distance_nm": float(route["distance_nm"]),
-            "transit_days": float(route["transit_days"]),
-        })
+        routes.append(
+            {
+                "id": route["id"],
+                "name": route["name"],
+                "origin_port_id": route["origin_port_id"],
+                "destination_port_id": route["destination_port_id"],
+                "chokepoints_transited": route["chokepoints_transited"],
+                "distance_nm": float(route["distance_nm"]),
+                "transit_days": float(route["transit_days"]),
+            }
+        )
     return {"routes": routes}
 
 
 @app.get("/v1/simulate")
-async def simulate(chokepoints: str = "", severity: str = "full"):
-    """Run a disruption simulation for given chokepoints."""
+async def simulate(chokepoints: str = "", severity: str = "", message: str = ""):
+    if severity:
+        detected = severity
+    elif message:
+        has_chokepoints = bool(chokepoints)
+        detected = _detect_severity(message, has_chokepoints)
+    else:
+        detected = "partial"
+
     if not chokepoints:
         return {
-            "scenario": {"chokepoints": [], "severity": severity, "affected_vessels": 0},
+            "scenario": {
+                "chokepoints": [],
+                "severity": detected,
+                "affected_vessels": 0,
+            },
             "affected_routes": [],
             "carriers": [],
             "rerouting": {"alternatives": []},
@@ -242,22 +268,11 @@ async def simulate(chokepoints: str = "", severity: str = "full"):
 
     cp_list = [c.strip() for c in chokepoints.split(",") if c.strip()]
     world, _, simulator, _ = _get_world()
-    simulation = simulator.run_scenario(cp_list, severity)
-
-    affected_routes = []
-    blocked_set = set(cp_list)
-    for _, route in world._routes.iterrows():
-        if set(route["chokepoints_transited"]) & blocked_set:
-            affected_routes.append({
-                "id": route["id"],
-                "name": route["name"],
-                "origin_port_id": route["origin_port_id"],
-                "destination_port_id": route["destination_port_id"],
-            })
+    simulation = simulator.run_scenario(cp_list, detected)
 
     return {
         "scenario": simulation.scenario,
-        "affected_routes": affected_routes,
+        "affected_routes": simulation.affected_routes,
         "carriers": simulation.carriers,
         "rerouting": simulation.rerouting,
         "port_congestion": simulation.port_congestion,
@@ -290,7 +305,9 @@ async def get_chokepoint(chokepoint_id: str):
     world, _, _, _ = _get_world()
     cp_row = world._chokepoints[world._chokepoints["id"] == chokepoint_id]
     if cp_row.empty:
-        raise HTTPException(status_code=404, detail=f"Chokepoint '{chokepoint_id}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Chokepoint '{chokepoint_id}' not found"
+        )
     cp = cp_row.iloc[0]
     centroid = cp.geometry.centroid
     return {
@@ -324,4 +341,5 @@ async def get_route(route_id: str):
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

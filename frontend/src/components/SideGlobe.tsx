@@ -465,7 +465,6 @@ export default function SideGlobe({
             e.preventDefault();
           });
           gl.domElement.addEventListener("webglcontextrestored", () => {
-            // Force scene re-render after context restore
           });
           setCanvasReady(true);
         }}

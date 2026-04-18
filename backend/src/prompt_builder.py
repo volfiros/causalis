@@ -27,7 +27,7 @@ def build_prompt(
     rerouting_text = "\n".join(rerouting_lines) if rerouting_lines else "  No alternative routes available."
 
     carriers_lines = []
-    for c in sim_dict["carriers"][:5]:
+    for c in sim_dict["carriers"]:
         carriers_lines.append(
             f"  - {c['name']} (ID: {c['carrier_id']}): exposure {c['exposure_score']}, "
             f"{c['routes_exposed']} routes exposed, "
@@ -48,6 +48,9 @@ def build_prompt(
     for entry in sim_dict["cascade"]["impact_timeline"][:5]:
         timeline_lines.append(f"  - {entry['port']}: +{entry['hours_to_impact']}h")
     timeline_text = "\n".join(timeline_lines) if timeline_lines else "  No cascade timeline available."
+
+    total_daily_risk = sum(c['estimated_daily_risk_usd'] for c in sim_dict['carriers'])
+    affected_route_count = len(sim_dict.get('affected_routes', sim_dict.get('rerouting', {}).get('alternatives', [])))
 
     rag_section = (
         f"## Reference Material\n{rag_context}\n"
@@ -113,5 +116,10 @@ Use these exact entity ids when rendering GlobeVersion:
 
 ## Output Format
 IMPORTANT: Your ENTIRE response must be valid OpenUI Lang starting with root = Stack([...]). Do NOT output plain text, markdown, or explanations outside of OpenUI Lang syntax.
-Use specific numbers from the simulation data above. Be concise and factual.
+Use these EXACT numbers from the simulation data for ImpactStats:
+- vessels = {sim_dict['scenario']['affected_vessels']}
+- routes = {affected_route_count}
+- cost_usd = {total_daily_risk}
+For CarrierTable, include ALL carriers from the data above.
+Do NOT invent or estimate numbers. Use only values from the simulation data.
 """

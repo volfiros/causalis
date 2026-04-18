@@ -152,7 +152,6 @@ export function GlobeSidebar({
         overflow: "hidden",
       }}
     >
-      {/* Globe Container - Full size filling entire sidebar, shifted up */}
       <div
         style={{
           position: "absolute",
@@ -172,7 +171,6 @@ export function GlobeSidebar({
         />
       </div>
 
-      {/* Close Button - Top Right */}
       <button
         onClick={onClose}
         style={{
@@ -209,7 +207,6 @@ export function GlobeSidebar({
         ×
       </button>
 
-      {/* Top Section - Dropdowns */}
       <div
         style={{
           position: "absolute",
@@ -256,7 +253,6 @@ export function GlobeSidebar({
         </div>
       </div>
 
-      {/* Bottom Section - Impact Stats */}
       <div
         style={{
           position: "absolute",

@@ -64,19 +64,19 @@ function getApiBase(): string {
 
 let simulationCache = new Map<string, SimulationData>();
 
-export function useSimulation(entities: string[], severity: string = "full") {
+export function useSimulation(entities: string[], message: string = "") {
   const [data, setData] = useState<SimulationData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSimulation = useCallback(async (entityList: string[], sev: string) => {
+  const fetchSimulation = useCallback(async (entityList: string[], msg: string) => {
     if (entityList.length === 0) {
       setData(null);
       return;
     }
 
     const chokepoints = entityList.join(",");
-    const cacheKey = `${chokepoints}:${sev}`;
+    const cacheKey = `${chokepoints}:${msg}`;
 
     if (simulationCache.has(cacheKey)) {
       setData(simulationCache.get(cacheKey)!);
@@ -88,7 +88,7 @@ export function useSimulation(entities: string[], severity: string = "full") {
 
     try {
       const res = await fetch(
-        `${getApiBase()}/api/simulate?chokepoints=${encodeURIComponent(chokepoints)}&severity=${encodeURIComponent(sev)}`
+        `${getApiBase()}/api/simulate?chokepoints=${encodeURIComponent(chokepoints)}&message=${encodeURIComponent(msg)}`
       );
       if (!res.ok) throw new Error(`Simulation failed: ${res.status}`);
       const result: SimulationData = await res.json();
@@ -106,8 +106,8 @@ export function useSimulation(entities: string[], severity: string = "full") {
       setData(null);
       return;
     }
-    fetchSimulation(entities, severity);
-  }, [entities.join(","), severity, fetchSimulation]);
+    fetchSimulation(entities, message);
+  }, [entities.join(","), message, fetchSimulation]);
 
   return { data, loading, error };
 }
