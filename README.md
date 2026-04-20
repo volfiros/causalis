@@ -1,5 +1,3 @@
-<div align="center">
-
 ```
    ██████╗ █████╗ ██╗   ██╗███████╗ █████╗ ██╗     ██╗███████╗
   ██╔════╝██╔══██╗██║   ██║██╔════╝██╔══██╗██║     ██║██╔════╝
@@ -12,8 +10,6 @@
 **Maritime World Model — Predict disruption before it cascades.**
 
 [![Deploy](https://github.com/volfiros/causalis/actions/workflows/deploy-backend.yml/badge.svg)](https://github.com/volfiros/causalis/actions/workflows/deploy-backend.yml)
-
-</div>
 
 ---
 
@@ -38,19 +34,19 @@ Causalis is **functional and operational** — the simulation engine, chat inter
  │  · OpenUI    │stream │  RAG Retrieval    Prompt Builder          │
  │    Renderer  │       │        │                    │            │
  └──────────────┘       │        └──────┬─────────────┘            │
-                         │               ▼                          │
-                         │     Gemini Flash (streaming)             │
-                         │               │                          │
-                         │               ▼                          │
-                         │     OpenUI Lang structured response      │
-                         └──────────────────────────────────────────┘
+                        │               ▼                          │
+                        │     Gemini Flash (streaming)             │
+                        │               │                          │
+                        │               ▼                          │
+                        │     OpenUI Lang structured response      │
+                        └──────────────────────────────────────────┘
 ```
 
 ### Request lifecycle
 
 1. **User asks a question** in the chat interface (e.g. "Simulate a full closure of the Suez Canal")
-2. **Next.js API proxy** forwards the request to the FastAPI backend, normalizing message format from the Vercel AI SDK
-3. **Entity extraction** parses chokepoint names, port names, carriers, and severity from natural language using an alias dictionary
+2. **Next.js API route** (`/api/chat/stream/route.ts`) normalizes the Vercel AI SDK message format and proxies the request to the FastAPI backend
+3. **Entity extraction** parses chokepoint names, port names, carriers, and severity from natural language using alias dictionaries with exact, fuzzy, and phonetic matching
 4. **Simulation engine** runs a disruption scenario on a NetworkX graph of 45 ports and 20 routes, computing:
    - Affected vessels and routes
    - Rerouting alternatives with cost/time deltas
@@ -69,57 +65,118 @@ Causalis is **functional and operational** — the simulation engine, chat inter
 causalis/
 ├── backend/                          # Python FastAPI backend
 │   ├── src/
-│   │   ├── provider.py               # FastAPI app, /v1/chat/stream endpoint, SSE proxy
+│   │   ├── provider.py               # FastAPI app entry point
+│   │   │                             # Endpoints: POST /v1/chat/stream, GET /v1/simulate,
+│   │   │                             #           GET /v1/spatial/*, GET /health
+│   │   │                             # Lazy-loads world model, simulator, and RAG on first request
 │   │   ├── world_model.py            # MaritimeWorldModel — NetworkX graph of ports & routes
+│   │   │                             # Nodes = ports, edges = shipping routes with distance/chokepoints
+│   │   │                             # Provides: shortest path, connectivity, region queries, GeoJSON export
+│   │   ├── temporal_model.py         # TemporalModel — time-dependent baselines & patterns
+│   │   │                             # Port congestion baselines, route delay distributions,
+│   │   │                             # carrier exposure patterns
 │   │   ├── simulator.py              # DisruptionSimulator — scenario engine
-│   │   ├── temporal_model.py         # TemporalModel — baselines, delay distributions
-│   │   ├── entity_extractor.py       # NLP entity & severity extraction from free text
-│   │   ├── prompt_builder.py         # Assembles OpenUI Lang prompts with simulation data
+│   │   │                             # run_scenario(chokepoints, severity) → SimulationResult
+│   │   │                             # Stages: affected routes → vessels → rerouting →
+│   │   │                             #           carrier scores → port congestion → cascade BFS
+│   │   ├── entity_extractor.py       # NLP-free entity & severity extraction from free text
+│   │   │                             # Three-tier matching: exact substring → fuzzy (rapidfuzz)
+│   │   │                             #   → phonetic (Metaphone). Keyword-based severity detection.
+│   │   ├── prompt_builder.py         # Assembles OpenUI Lang prompts with formatted simulation data,
+│   │   │                             # RAG context, and component syntax rules
 │   │   ├── rag.py                    # Vector search over maritime knowledge base
-│   │   └── data_loader.py            # JSON/GeoJSON data loaders
+│   │   │                             # Uses sentence-transformers embeddings + cosine similarity
+│   │   │                             # Indexes: disruptions, ports, carriers, routes
+│   │   └── data_loader.py            # JSON/GeoJSON data loaders (ports, chokepoints, routes,
+│   │                                 #   carriers, vessels) → pandas DataFrames / GeoDataFrames
 │   ├── data/                         # Maritime datasets
-│   │   ├── ports.json                # 45 global ports (TEU, draft, dwell)
-│   │   ├── chokepoints.geojson       # 6 chokepoints (Suez, Hormuz, Malacca, Panama, Bab el-Mandeb, Bosporus)
+│   │   ├── ports.json                # 45 global ports (TEU, draft, dwell hours)
+│   │   ├── chokepoints.geojson       # 6 chokepoints (Suez, Hormuz, Malacca, Panama,
+│   │   │                             #   Bab el-Mandeb, Bosporus)
 │   │   ├── routes.json               # 20 shipping routes with chokepoint transits
 │   │   ├── carriers.json             # 10 carriers with route portfolios & chokepoint exposure
 │   │   ├── vessels.json              # 52 vessels with carrier assignments
 │   │   └── disruptions.json          # 7 historical disruption events
+│   ├── tests/                        # Backend test suite
+│   ├── conftest.py                   # Pytest configuration
 │   └── requirements.txt
 │
 ├── frontend/                         # Next.js 16 + React 19 frontend
 │   ├── src/
 │   │   ├── app/
-│   │   │   ├── page.tsx              # Landing page with 3D globe
-│   │   │   ├── chat/page.tsx         # Chat interface with OpenUI rendering
+│   │   │   ├── page.tsx              # Landing page — 3D globe + tagline + "Begin Session" CTA
+│   │   │   ├── layout.tsx            # Root layout (Outfit + JetBrains Mono fonts)
 │   │   │   ├── globals.css           # Global styles (Tailwind v4)
-│   │   │   └── layout.tsx            # Root layout (Outfit + JetBrains Mono)
+│   │   │   ├── chat/
+│   │   │   │   └── page.tsx          # Chat interface — useChat hook, OpenUI renderer,
+│   │   │   │                         #   GlobeSidebar integration, globe event subscription
+│   │   │   └── api/                  # Next.js API route handlers (proxy to backend)
+│   │   │       ├── chat/
+│   │   │       │   └── stream/
+│   │   │       │       └── route.ts  # POST — proxies to backend /v1/chat/stream,
+│   │   │       │                     #   normalizes Vercel AI SDK message format, streams SSE
+│   │   │       ├── simulate/
+│   │   │       │   └── route.ts      # GET — proxies to backend /v1/simulate,
+│   │   │       │                     #   returns JSON simulation data
+│   │   │       └── spatial/          # GET — proxies to backend /v1/spatial/*
+│   │   │           ├── ports/        #   Returns all ports as JSON
+│   │   │           ├── chokepoints/  #   Returns all chokepoints as JSON
+│   │   │           └── routes/       #   Returns all routes as JSON
 │   │   ├── components/
 │   │   │   ├── SideGlobe.tsx         # Three.js WebGL globe (React Three Fiber)
+│   │   │   │                         # Landmesh from GeoJSON, pin markers, route arcs (Bézier),
+│   │   │   │                         #   animated dashed lines for affected routes, glow effects
 │   │   │   └── globe-sidebar/        # Sidebar with simulation data panels
-│   │   │       ├── index.tsx         # Sidebar shell with dropdown sections
-│   │   │       ├── ImpactStatsCard   # Vessels/routes/cost metrics
-│   │   │       ├── CarrierTableCard  # Carrier exposure rankings
+│   │   │       ├── index.tsx         # GlobeSidebar — sidebar shell with dropdown sections,
+│   │   │       │                     #   embedded SideGlobe, Framer Motion animations
+│   │   │       ├── ImpactStatsCard   # Vessels/routes/cost metrics display
+│   │   │       ├── CarrierTableCard  # Carrier exposure rankings with progress bars
 │   │   │       ├── PortCard          # Port congestion details
 │   │   │       ├── RouteCard         # Route disruption info
-│   │   │       ├── PinDetails        # Selected pin details
-│   │   │       └── ...
+│   │   │       ├── PinDetails        # Selected pin (port/chokepoint) details
+│   │   │       ├── Menus             # Entity selection menus for scenarios
+│   │   │       ├── FilterControls    # Filter UI for entity selection
+│   │   │       ├── GlobeVersionCard  # Globe version indicator
+│   │   │       ├── VersionPanel      # Version panel component
+│   │   │       └── FullscreenToggle  # Fullscreen toggle for globe view
 │   │   └── lib/
-│   │       ├── openui-library.tsx     # OpenUI component definitions (Stack, TextBlock, ImpactStats, etc.)
-│   │       ├── globe-events.ts       # Pub/sub bridge between OpenUI components and the globe
+│   │       ├── openui-library.tsx    # OpenUI component definitions with Zod schemas:
+│   │       │                         #   Stack, TextBlock, ImpactStats, CarrierTable,
+│   │       │                         #   ReroutingCard, PortCongestion, CascadeTimeline, GlobeVersion
+│   │       ├── globe-events.ts       # Pub/sub event bridge — emit/subscribe for globe state updates
 │   │       ├── spatial-data.ts       # Client-side cache for ports, chokepoints, routes
-│   │       ├── arc-utils.ts          # 3D arc geometry for route visualization
-│   │       └── use-simulation.ts     # React hook for on-demand simulation queries
-│   └── package.json
+│   │       │                         #   Fetches from /api/spatial/*, provides lookup helpers
+│   │       ├── arc-utils.ts          # 3D arc geometry — QuadraticBezierCurve3 for route arcs
+│   │       ├── globe-constants.ts    # Globe radius, altitude offsets, lat/lng → Vector3 converter
+│   │       └── use-simulation.ts     # React hook for on-demand simulation queries via /api/simulate
+│   ├── package.json
+│   ├── next.config.ts                # Next.js configuration (env var loading)
+│   ├── tsconfig.json
+│   ├── postcss.config.mjs
+│   └── eslint.config.mjs
 │
 ├── Dockerfile                        # Backend container (Python 3.11, GDAL, PyTorch for embeddings)
-├── start.sh                         # Local dev launcher (backend + frontend, with pre-flight checks)
+├── start.sh                          # Local dev launcher — pre-flight checks, dep install,
+│                                     #   starts backend (uvicorn) + frontend (pnpm dev)
+├── .env.example                      # Environment variable template
 └── .github/workflows/
     └── deploy-backend.yml            # CI: auto-deploy backend to Hugging Face Spaces
 ```
 
+## World Model & Temporal Model
+
+The backend separates **spatial structure** from **temporal behavior**:
+
+| Model | Purpose | Key responsibility |
+|-------|---------|-------------------|
+| **MaritimeWorldModel** (`world_model.py`) | "The map" — static spatial structure | NetworkX graph of ports (nodes) and shipping routes (edges). Provides shortest path, connectivity, region queries, and GeoJSON export. |
+| **TemporalModel** (`temporal_model.py`) | "The clock" — time-dependent baselines | Port congestion baselines (dwell hours → congestion ratio), route delay distributions (transit days ± std dev), carrier exposure patterns. |
+
+The `DisruptionSimulator` uses both: the World Model identifies *which* ports and routes are affected by a disruption; the Temporal Model provides the *normal baseline* so the simulator can compute the delta between normal and disrupted states.
+
 ## Simulation engine
 
-The core simulation runs on a `MaritimeWorldModel` — a NetworkX graph where nodes are ports and edges are shipping routes annotated with distance, transit time, and chokepoints transited. `DisruptionSimulator.run_scenario()` accepts a list of chokepoint IDs and a severity level.
+`DisruptionSimulator.run_scenario()` accepts a list of chokepoint IDs and a severity level.
 
 ```
  Severity: full (1.0) · partial (0.6) · temporary (0.3)
@@ -149,14 +206,14 @@ The core simulation runs on a `MaritimeWorldModel` — a NetworkX graph where no
 |---|---|---|
 | **Affected routes** | Routes that transit any blocked chokepoint | Set intersection on `chokepoints_transited` |
 | **Affected vessels** | Count of vessels on affected carriers, scaled by severity | Carrier-to-route mapping × severity multiplier |
-| **Rerouting** | Alternative routes avoiding blocked chokepoints, with Δ days and Δ cost | Direct route lookup with blocked-set exclusion |
-| **Carrier exposure** | Per-carrier exposure score and daily risk in USD | Weighted chokepoint exposure × routes exposed × severity |
+| **Rerouting** | Alternative routes avoiding blocked chokepoints, with Δ days and Δ cost | Direct route lookup with blocked-set exclusion ($60,000/day per vessel) |
+| **Carrier exposure** | Per-carrier exposure score and daily risk in USD | Weighted chokepoint exposure × routes exposed × severity ($500,000 base risk) |
 | **Port congestion** | Baseline → forecast congestion, dwell time increase | Vessel displacement model against baseline dwell ratios |
-| **Cascade timeline** | Ordered list of ports with hours-to-impact | BFS on port graph, propagating impact across edges weighted by distance/speed |
+| **Cascade timeline** | Ordered list of ports with hours-to-impact | BFS on port graph, propagating impact across edges weighted by distance/speed (up to 720h) |
 
 ### Entity extraction
 
-The `entity_extractor` maps natural language to structured IDs using alias dictionaries:
+The `entity_extractor` maps natural language to structured IDs using three-tier matching:
 
 ```
 "Simulate a full closure of the Suez Canal"
@@ -168,6 +225,10 @@ The `entity_extractor` maps natural language to structured IDs using alias dicti
   │  Severity: "full"                  ← "full closure" keyword
   └─────────────────────┘
 ```
+
+1. **Exact substring match** against alias dictionaries
+2. **Fuzzy matching** via `rapidfuzz` (threshold: 75) for typos
+3. **Phonetic matching** via custom Metaphone algorithm for phonetic misspellings
 
 Supports 6 chokepoints, 20 port names, and 13 carrier names with aliases (e.g. "persian gulf" → `strait_of_hormuz`, "jebel ali" → `dubai`).
 
@@ -201,10 +262,10 @@ Components can emit side effects — `GlobeVersion` triggers globe visualization
 Built with **React Three Fiber** (`@react-three/fiber`) and **Three.js**:
 
 - Natural Earth landmass geometry rendered from GeoJSON
-- Chokepoint markers (glowing pins with pulse animations)
-- Port markers with size proportional to annual TEU
-- Route arcs via quadratic Bézier curves (`arc-utils.ts`), with affected routes colored blue and animated
-- Interactive: click pins to select, orbit to rotate, scroll to zoom
+- Chokepoint markers (glowing pins with pulse animations via instanced meshes)
+- Port markers with interactive hover/click
+- Route arcs via quadratic Bézier curves (`arc-utils.ts`), with affected routes rendered as animated dashed blue lines
+- Interactive: click pins to select, orbit to rotate
 - Appears on both the landing page (chokepoints-only view) and the chat sidebar (full simulation view)
 
 ## Data coverage
@@ -264,8 +325,7 @@ This launches:
 
 ### Manual setup
 
-<details>
-<summary>Backend</summary>
+**Backend**
 
 ```bash
 cd backend
@@ -275,10 +335,7 @@ pip install -r requirements.txt
 uvicorn src.provider:app --host 0.0.0.0 --port 8000
 ```
 
-</details>
-
-<details>
-<summary>Frontend</summary>
+**Frontend**
 
 ```bash
 cd frontend
@@ -286,9 +343,7 @@ pnpm install
 pnpm dev
 ```
 
-The frontend reads `../.env` automatically via `next.config.ts` and proxies API requests through Next.js rewrites.
-
-</details>
+The frontend reads `../.env` automatically via `next.config.ts` and proxies API requests through Next.js API route handlers.
 
 ### Environment variables
 
@@ -296,7 +351,7 @@ The frontend reads `../.env` automatically via `next.config.ts` and proxies API 
 |---|---|---|---|
 | `GEMINI_API_KEY` | Yes | — | Google Gemini API key |
 | `GEMINI_MODEL` | No | `gemini-flash-latest` | Gemini model to use |
-| `BACKEND_URL` | No | `http://localhost:8000` | Backend URL (used by Next.js proxy) |
+| `BACKEND_URL` | No | `http://localhost:8000` | Backend URL (used by Next.js API routes) |
 
 ## Deployment
 
@@ -306,6 +361,32 @@ The frontend reads `../.env` automatically via `next.config.ts` and proxies API 
 | **Frontend** | Vercel | Push to `main` |
 
 The GitHub Actions workflow (`.github/workflows/deploy-backend.yml`) clones the HF Space repo, copies backend files into it, and pushes. The HF_TOKEN secret must have write access to the Space.
+
+## API endpoints
+
+### Backend (FastAPI)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/v1/chat/stream` | Chat with streaming SSE. Accepts `{messages: [{role, content}]}` |
+| `GET` | `/v1/simulate` | Run simulation. Params: `chokepoints`, `severity`, `message` |
+| `GET` | `/v1/spatial/ports` | List all ports |
+| `GET` | `/v1/spatial/chokepoints` | List all chokepoints |
+| `GET` | `/v1/spatial/routes` | List all routes |
+| `GET` | `/v1/spatial/port/{id}` | Get single port by ID |
+| `GET` | `/v1/spatial/chokepoint/{id}` | Get single chokepoint by ID |
+| `GET` | `/v1/spatial/route/{id}` | Get single route by ID |
+| `GET` | `/health` | Health check |
+
+### Frontend (Next.js API routes)
+
+| Method | Route | Proxies to |
+|---|---|---|
+| `POST` | `/api/chat/stream` | `POST /v1/chat/stream` |
+| `GET` | `/api/simulate` | `GET /v1/simulate` |
+| `GET` | `/api/spatial/ports` | `GET /v1/spatial/ports` |
+| `GET` | `/api/spatial/chokepoints` | `GET /v1/spatial/chokepoints` |
+| `GET` | `/api/spatial/routes` | `GET /v1/spatial/routes` |
 
 ## Project structure (dependency graph)
 

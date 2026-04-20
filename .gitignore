@@ -75,7 +75,9 @@ data/raw/
 chroma/
 
 # Agent / AI tooling
+.conductor/
 .pi/
+.plans/
 .agents/
 .skills/
 .plans/
@@ -83,6 +85,8 @@ chroma/
 *.session.jsonl
 sessions/
 todo/
+**/AGENTS.md
+**/CLAUDE.md
 
 # Specs and documentation
 *.spec.md
