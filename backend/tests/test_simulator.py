@@ -214,6 +214,14 @@ class TestCascadePropagation:
         for entry in cascade["impact_timeline"]:
             assert entry["port"] in graph_nodes, f"Invalid port: {entry['port']}"
 
+    def test_cascade_includes_propagation_edges(self, simulator):
+        affected = simulator._find_affected_routes(["suez_canal"])
+        cascade = simulator._compute_cascade(affected, "full")
+        assert "propagation_edges" in cascade
+        for edge in cascade["propagation_edges"]:
+            assert edge["route_id"]
+            assert edge["hours_to_impact"] >= 0
+
     def test_full_pipeline_integration(self, simulator):
         result = simulator.run_scenario(["suez_canal"], "full")
         assert len(result.rerouting["alternatives"]) > 0

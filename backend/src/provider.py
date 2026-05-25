@@ -252,6 +252,10 @@ async def simulate(chokepoints: str = "", severity: str = "", message: str = "")
     else:
         detected = "partial"
 
+    if not chokepoints and message:
+        entities = extract_entities(message)
+        chokepoints = ",".join(entities.get("chokepoints", []))
+
     if not chokepoints:
         return {
             "scenario": {

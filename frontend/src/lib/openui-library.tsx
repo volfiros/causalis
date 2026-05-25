@@ -1,7 +1,24 @@
 import { createLibrary, defineComponent } from "@openuidev/react-lang";
-import { useEffect } from "react";
+import { createContext, type ReactNode, useContext, useEffect } from "react";
 import { z } from "zod";
 import { emitGlobeEvent } from "./globe-events";
+import { SimulationData } from "./use-simulation";
+
+const SimulationContext = createContext<SimulationData | null>(null);
+
+export function SimulationDataProvider({
+  data,
+  children,
+}: {
+  data: SimulationData | null;
+  children: ReactNode;
+}) {
+  return <SimulationContext.Provider value={data}>{children}</SimulationContext.Provider>;
+}
+
+function getSimulationCostUsd(data: SimulationData | null): number {
+  return data?.carriers?.reduce((sum, carrier) => sum + carrier.estimated_daily_risk_usd, 0) ?? 0;
+}
 
 function StatCell({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
@@ -47,7 +64,10 @@ export const ImpactStats = defineComponent({
     cost_usd: z.number().describe("Estimated cost impact in USD"),
   }),
   component: ({ props }) => {
-    const { vessels, routes, cost_usd } = props;
+    const simulationData = useContext(SimulationContext);
+    const vessels = simulationData?.scenario.affected_vessels ?? props.vessels;
+    const routes = simulationData?.affected_routes.length ?? props.routes;
+    const cost_usd = simulationData ? getSimulationCostUsd(simulationData) : props.cost_usd;
 
     return (
       <div
@@ -82,7 +102,11 @@ export const CarrierTable = defineComponent({
     ).describe("List of carriers with exposure data"),
   }),
   component: ({ props }) => {
-    const { carriers } = props;
+    const simulationData = useContext(SimulationContext);
+    const carriers = simulationData?.carriers.map((carrier) => ({
+      name: carrier.name,
+      exposure: carrier.exposure_score,
+    })) ?? props.carriers;
 
     return (
       <div
@@ -107,7 +131,7 @@ export const CarrierTable = defineComponent({
         >
           Carrier Exposure
         </div>
-        {carriers.slice(0, 5).map((carrier, i) => (
+        {carriers.map((carrier, i) => (
           <div
             key={i}
             style={{
@@ -175,7 +199,14 @@ export const ReroutingCard = defineComponent({
     vessels_affected: z.number().describe("Number of vessels affected"),
   }),
   component: ({ props }) => {
-    const { route_id, additional_days, additional_cost_usd, vessels_affected } = props;
+    const simulationData = useContext(SimulationContext);
+    const authoritative = simulationData?.rerouting.alternatives.find(
+      (route) => route.route_id === props.route_id || route.original_route_id === props.route_id,
+    );
+    const route_id = authoritative?.route_id ?? props.route_id;
+    const additional_days = authoritative?.additional_days ?? props.additional_days;
+    const additional_cost_usd = authoritative?.additional_cost_usd ?? props.additional_cost_usd;
+    const vessels_affected = authoritative?.vessels_affected ?? props.vessels_affected;
 
     return (
       <div
@@ -279,7 +310,12 @@ export const PortCongestion = defineComponent({
     dwell_increase_hours: z.number().describe("Additional dwell time in hours"),
   }),
   component: ({ props }) => {
-    const { port_id, baseline, forecast, dwell_increase_hours } = props;
+    const simulationData = useContext(SimulationContext);
+    const authoritative = simulationData?.port_congestion.find((port) => port.port_id === props.port_id);
+    const port_id = authoritative?.port_id ?? props.port_id;
+    const baseline = authoritative?.baseline_congestion ?? props.baseline;
+    const forecast = authoritative?.forecast_congestion ?? props.forecast;
+    const dwell_increase_hours = authoritative?.dwell_increase_hours ?? props.dwell_increase_hours;
     const change = forecast - baseline;
     const changePercent = baseline === 0 ? "0.0" : ((change / baseline) * 100).toFixed(1);
 
@@ -439,7 +475,8 @@ export const CascadeTimeline = defineComponent({
     ).describe("List of ports with impact timing"),
   }),
   component: ({ props }) => {
-    const { timeline } = props;
+    const simulationData = useContext(SimulationContext);
+    const timeline = simulationData?.cascade.impact_timeline ?? props.timeline;
 
     return (
       <div
@@ -518,14 +555,19 @@ export const Stack = defineComponent({
 });
 
 function GlobeVersionButton({ version, entities }: { version: number; entities: string[] }) {
+  const simulationData = useContext(SimulationContext);
+  const emittedEntities = simulationData?.scenario.chokepoints.length
+    ? simulationData.scenario.chokepoints
+    : entities;
+
   useEffect(() => {
-    console.log("[GlobeVersion] emitGlobeEvent", { version, entities });
-    emitGlobeEvent({ version, entities });
-  }, [version, entities]);
+    console.log("[GlobeVersion] emitGlobeEvent", { version, entities: emittedEntities });
+    emitGlobeEvent({ version, entities: emittedEntities });
+  }, [version, emittedEntities]);
 
   return (
     <button
-      onClick={() => emitGlobeEvent({ version, entities })}
+      onClick={() => emitGlobeEvent({ version, entities: emittedEntities })}
       style={{
         display: "inline-flex",
         alignItems: "center",

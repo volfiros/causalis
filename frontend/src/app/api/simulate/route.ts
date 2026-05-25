@@ -1,4 +1,5 @@
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const BACKEND_TIMEOUT_MS = 45000;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
   try {
     const res = await fetch(
       `${BACKEND_URL}/v1/simulate?chokepoints=${encodeURIComponent(chokepoints)}&message=${encodeURIComponent(message)}`,
-      { signal: AbortSignal.timeout(15000) }
+      { signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS) }
     );
     if (!res.ok) {
       const text = await res.text().catch(() => "");

@@ -6,9 +6,9 @@ import { TextStreamChatTransport } from "ai";
 import { Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Renderer, type Library } from "@openuidev/react-lang";
-import { library } from "@/lib/openui-library";
+import { library, SimulationDataProvider } from "@/lib/openui-library";
 import { GlobeEventPayload, subscribeToGlobeEvents, emitGlobeEvent } from "@/lib/globe-events";
-import { useSimulation } from "@/lib/use-simulation";
+import { SimulationData, useSimulation } from "@/lib/use-simulation";
 import {
   getPortById,
   getChokepointById,
@@ -82,10 +82,12 @@ function OpenUIRenderer({
   response,
   library,
   isStreaming,
+  simulationData,
 }: {
   response: string;
   library: Library;
   isStreaming: boolean;
+  simulationData: SimulationData | null;
 }) {
   const [parseState, setParseState] = useState<"streaming" | "success" | "failed">("streaming");
   const hasRootRef = useRef(false);
@@ -138,26 +140,28 @@ function OpenUIRenderer({
   }
 
   return (
-    <RendererErrorBoundary fallback={fallback}>
-      <Renderer
-        response={sanitized}
-        library={library}
-        isStreaming={isStreaming}
-        onError={(errors) => {
-          console.log("[OpenUIRenderer] onError", errors.length);
-          if (errors.length > 0) {
-            errors.forEach((e: any) => console.log("  error:", e.code, e.component, e.message));
-          }
-        }}
-        onParseResult={(result) => {
-          console.log("[OpenUIRenderer] onParseResult", { hasRoot: !!result?.root, rootType: result?.root?.typeName });
-          if (result?.root) {
-            hasRootRef.current = true;
-            setParseState("success");
-          }
-        }}
-      />
-    </RendererErrorBoundary>
+    <SimulationDataProvider data={simulationData}>
+      <RendererErrorBoundary fallback={fallback}>
+        <Renderer
+          response={sanitized}
+          library={library}
+          isStreaming={isStreaming}
+          onError={(errors) => {
+            console.log("[OpenUIRenderer] onError", errors.length);
+            if (errors.length > 0) {
+              errors.forEach((e: any) => console.log("  error:", e.code, e.component, e.message));
+            }
+          }}
+          onParseResult={(result) => {
+            console.log("[OpenUIRenderer] onParseResult", { hasRoot: !!result?.root, rootType: result?.root?.typeName });
+            if (result?.root) {
+              hasRootRef.current = true;
+              setParseState("success");
+            }
+          }}
+        />
+      </RendererErrorBoundary>
+    </SimulationDataProvider>
   );
 }
 
@@ -211,6 +215,7 @@ function ChatPanel({
   onToggleSidebar,
   hasGlobe,
   globeVersion,
+  simulationData,
 }: {
   messages: Array<{ id: string; role: string; parts?: Array<{ type: string; text?: string }> }>;
   input: string;
@@ -225,6 +230,7 @@ function ChatPanel({
   onToggleSidebar: () => void;
   hasGlobe: boolean;
   globeVersion: number;
+  simulationData: SimulationData | null;
 }) {
   return (
     <div
@@ -385,6 +391,7 @@ function ChatPanel({
                         response={getMessageText(msg)}
                         library={library}
                         isStreaming={isLoading && msg.id === messages[messages.length - 1]?.id}
+                        simulationData={simulationData}
                       />
                     )}
                   </div>
@@ -514,8 +521,6 @@ function ChatContent() {
   const [ports, setPorts] = useState<SpatialPort[]>([]);
   const [chokepoints, setChokepoints] = useState<SpatialChokepoint[]>([]);
   const [routes, setRoutes] = useState<SpatialRoute[]>([]);
-  const clientVersionRef = useRef(0);
-  const previousEntitiesRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -537,46 +542,13 @@ function ChatContent() {
       .catch((err) => console.error("Failed to initialize spatial data:", err));
   }, []);
 
-  const entityInfos = useMemo(() => {
-    if (!globeState) return [];
-
-    const infos: EntityInfo[] = [];
-    for (const entityId of globeState.entities) {
-      const port = getPortById(entityId);
-      if (port) {
-        infos.push({ id: entityId, name: port.name, type: "port" });
-        continue;
-      }
-      const chokepoint = getChokepointById(entityId);
-      if (chokepoint) {
-        infos.push({ id: entityId, name: chokepoint.name, type: "chokepoint" });
-      }
-    }
-    return infos;
-  }, [globeState]);
-
   useEffect(() => {
     const unsubscribe = subscribeToGlobeEvents((payload) => {
       console.log("[ChatContent] Received globe event", payload);
-      const newEntityIds = payload.entities.filter((id) => !previousEntitiesRef.current.has(id));
-      const hasNewEntities = newEntityIds.length > 0;
-      const removedEntityIds = Array.from(previousEntitiesRef.current).filter(
-        (id) => !payload.entities.includes(id)
-      );
-      const hasRemovedEntities = removedEntityIds.length > 0;
-
-      if (hasNewEntities || hasRemovedEntities) {
-        clientVersionRef.current += 1;
-        previousEntitiesRef.current.clear();
-        payload.entities.forEach((id) => previousEntitiesRef.current.add(id));
-      }
-
-      const eventPayload: GlobeEventPayload = {
+      setGlobeState((current) => ({
         ...payload,
-        version: clientVersionRef.current,
-      };
-
-      setGlobeState(eventPayload);
+        version: payload.version || current?.version || 1,
+      }));
       setIsSidebarOpen(true);
 
       if (payload.selectedEntityId) {
@@ -586,7 +558,7 @@ function ChatContent() {
     return unsubscribe;
   }, []);
 
-  const highlightedRouteIds = useMemo(() => {
+  const selectedRouteIds = useMemo(() => {
     if (!selectedPinId) return [];
     return routes
       .filter(
@@ -630,8 +602,6 @@ function ChatContent() {
     setSelectedPinId(null);
   };
 
-  const highlightedEntities = globeState?.entities ?? [];
-
   const simulationEntities = useMemo(() => {
     return globeState?.entities?.filter(id => {
       const cp = getChokepointById(id);
@@ -645,6 +615,57 @@ function ChatContent() {
   }, [messages]);
 
   const { data: simulationData, loading: simulationLoading } = useSimulation(simulationEntities, simulationMessage);
+
+  useEffect(() => {
+    const chokepointIds = simulationData?.scenario.chokepoints ?? [];
+    if (chokepointIds.length === 0) return;
+
+    setIsSidebarOpen(true);
+    setGlobeState((current) => {
+      const sameEntities =
+        current?.entities.length === chokepointIds.length &&
+        current.entities.every((id) => chokepointIds.includes(id));
+      if (sameEntities) return current;
+
+      return { version: current?.version || 1, entities: chokepointIds };
+    });
+  }, [simulationData]);
+
+  const highlightedEntities = useMemo(() => {
+    const ids = new Set(globeState?.entities ?? []);
+    if (simulationData) {
+      simulationData.scenario.chokepoints.forEach((id) => ids.add(id));
+      simulationData.affected_routes.forEach((route) => {
+        ids.add(route.origin_port_id);
+        ids.add(route.destination_port_id);
+      });
+      simulationData.port_congestion.forEach((port) => ids.add(port.port_id));
+      simulationData.cascade.impact_timeline.slice(0, 12).forEach((entry) => ids.add(entry.port));
+    }
+    return Array.from(ids);
+  }, [globeState?.entities, simulationData]);
+
+  const entityInfos = useMemo(() => {
+    const infos: EntityInfo[] = [];
+    for (const entityId of highlightedEntities) {
+      const port = getPortById(entityId);
+      if (port) {
+        infos.push({ id: entityId, name: port.name, type: "port" });
+        continue;
+      }
+      const chokepoint = getChokepointById(entityId);
+      if (chokepoint) {
+        infos.push({ id: entityId, name: chokepoint.name, type: "chokepoint" });
+      }
+    }
+    return infos;
+  }, [highlightedEntities]);
+
+  const highlightedRouteIds = useMemo(() => {
+    const simulationRouteIds = simulationData?.affected_routes?.map((route) => route.id) ?? [];
+    const cascadeRouteIds = simulationData?.cascade.propagation_edges?.map((edge) => edge.route_id) ?? [];
+    return Array.from(new Set([...simulationRouteIds, ...cascadeRouteIds, ...selectedRouteIds]));
+  }, [simulationData, selectedRouteIds]);
 
 
   return (
@@ -681,6 +702,7 @@ function ChatContent() {
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         hasGlobe={globeState !== null}
         globeVersion={globeState?.version ?? 0}
+        simulationData={simulationData}
       />
     </>
   );

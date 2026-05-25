@@ -194,15 +194,18 @@ class DisruptionSimulator:
             impacted_ports[route["destination_port_id"]] = 0
         frontier = set(impacted_ports.keys())
         visited = set(impacted_ports.keys())
+        propagation_edges = []
         while frontier:
             next_frontier = set()
             for port_id in frontier:
                 for neighbor in self._world_model.get_connectivity(port_id):
                     if neighbor in visited:
                         continue
+                    route_id = None
                     try:
                         edge_data = self._graph.edges[port_id, neighbor]
                         distance_nm = edge_data.get("weight", 1000)
+                        route_id = edge_data.get("route_id")
                         transit_hours = distance_nm / AVERAGE_SPEED_KNOTS
                     except Exception:
                         transit_hours = 100
@@ -211,9 +214,16 @@ class DisruptionSimulator:
                         impacted_ports[neighbor] = new_impact
                         visited.add(neighbor)
                         next_frontier.add(neighbor)
+                        if route_id:
+                            propagation_edges.append({
+                                "from_port": port_id,
+                                "to_port": neighbor,
+                                "route_id": route_id,
+                                "hours_to_impact": int(new_impact),
+                            })
             frontier = next_frontier
         timeline = sorted(
             [{"port": pid, "hours_to_impact": int(hours)} for pid, hours in impacted_ports.items()],
             key=lambda x: x["hours_to_impact"],
         )
-        return {"impact_timeline": timeline}
+        return {"impact_timeline": timeline, "propagation_edges": propagation_edges}

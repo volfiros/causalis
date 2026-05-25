@@ -45,6 +45,7 @@ const cache: SpatialDataCache = {
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const SPATIAL_FETCH_TIMEOUT_MS = 30000;
 
 function getApiBase(): string {
   if (API_BASE) return API_BASE;
@@ -56,11 +57,12 @@ export async function fetchSpatialData(): Promise<void> {
   if (cache.initialized) return;
 
   const base = getApiBase();
+  const signal = AbortSignal.timeout(SPATIAL_FETCH_TIMEOUT_MS);
 
   const [portsRes, chokepointsRes, routesRes] = await Promise.all([
-    fetch(`${base}/api/spatial/ports`),
-    fetch(`${base}/api/spatial/chokepoints`),
-    fetch(`${base}/api/spatial/routes`),
+    fetch(`${base}/api/spatial/ports`, { signal }),
+    fetch(`${base}/api/spatial/chokepoints`, { signal }),
+    fetch(`${base}/api/spatial/routes`, { signal }),
   ]);
 
   if (!portsRes.ok) throw new Error(`Failed to fetch ports: ${portsRes.status}`);

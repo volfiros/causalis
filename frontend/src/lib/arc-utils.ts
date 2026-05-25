@@ -1,6 +1,8 @@
 import * as THREE from "three";
-import { latLng, GLOBE_RADIUS, ARC_MIN_ALTITUDE, ARC_HEIGHT } from "./globe-constants";
+import { latLng, ARC_MIN_ALTITUDE, ARC_HEIGHT } from "./globe-constants";
 import { SpatialRoute } from "./spatial-data";
+
+type RouteCoord = { latitude: number; longitude: number };
 
 export interface ArcData {
   startLat: number;
@@ -11,6 +13,7 @@ export interface ArcData {
   animated: boolean;
   width: number;
   routeId: string;
+  segmentId: string;
 }
 
 function clampAboveSurface(point: THREE.Vector3): THREE.Vector3 {
@@ -49,7 +52,8 @@ export function buildArcGeometry(
 
 export function computeArcsFromRoutes(
   routes: SpatialRoute[],
-  portCoords: Map<string, { latitude: number; longitude: number }>,
+  portCoords: Map<string, RouteCoord>,
+  chokepointCoords: Map<string, RouteCoord> = new Map(),
   affectedRouteIds: string[] = []
 ): ArcData[] {
   const arcs: ArcData[] = [];
@@ -61,17 +65,26 @@ export function computeArcsFromRoutes(
     if (!origin || !dest) continue;
 
     const isAffected = affectedRouteIds.includes(route.id);
+    const waypoints = route.chokepoints_transited
+      .map((id) => chokepointCoords.get(id))
+      .filter((coord): coord is RouteCoord => Boolean(coord));
+    const routePoints = [origin, ...waypoints, dest];
 
-    arcs.push({
-      startLat: origin.latitude,
-      startLng: origin.longitude,
-      endLat: dest.latitude,
-      endLng: dest.longitude,
-      color: isAffected ? "#3b82f6" : "#ffffff",
-      animated: isAffected,
-      width: isAffected ? 2 : 1,
-      routeId: route.id,
-    });
+    for (let i = 0; i < routePoints.length - 1; i++) {
+      const start = routePoints[i];
+      const end = routePoints[i + 1];
+      arcs.push({
+        startLat: start.latitude,
+        startLng: start.longitude,
+        endLat: end.latitude,
+        endLng: end.longitude,
+        color: isAffected ? "#3b82f6" : "#ffffff",
+        animated: isAffected,
+        width: isAffected ? 2 : 1,
+        routeId: route.id,
+        segmentId: `${route.id}:${i}`,
+      });
+    }
   }
 
   return arcs;

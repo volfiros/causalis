@@ -36,6 +36,12 @@ export interface SimulationCascade {
     port: string;
     hours_to_impact: number;
   }>;
+  propagation_edges?: Array<{
+    from_port: string;
+    to_port: string;
+    route_id: string;
+    hours_to_impact: number;
+  }>;
 }
 
 export interface SimulationAffectedRoute {
@@ -62,7 +68,7 @@ function getApiBase(): string {
   return "http://localhost:8000";
 }
 
-let simulationCache = new Map<string, SimulationData>();
+const simulationCache = new Map<string, SimulationData>();
 
 export function useSimulation(entities: string[], message: string = "") {
   const [data, setData] = useState<SimulationData | null>(null);
@@ -70,7 +76,7 @@ export function useSimulation(entities: string[], message: string = "") {
   const [error, setError] = useState<string | null>(null);
 
   const fetchSimulation = useCallback(async (entityList: string[], msg: string) => {
-    if (entityList.length === 0) {
+    if (entityList.length === 0 && !msg.trim()) {
       setData(null);
       return;
     }
@@ -102,7 +108,7 @@ export function useSimulation(entities: string[], message: string = "") {
   }, []);
 
   useEffect(() => {
-    if (entities.length === 0) {
+    if (entities.length === 0 && !message.trim()) {
       setData(null);
       return;
     }

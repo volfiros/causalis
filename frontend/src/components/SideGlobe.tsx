@@ -194,9 +194,17 @@ function Globe({
     return coords;
   }, [ports]);
 
+  const chokepointCoords = useMemo(() => {
+    const coords = new Map<string, { latitude: number; longitude: number }>();
+    for (const chokepoint of chokepoints) {
+      coords.set(chokepoint.id, { latitude: chokepoint.latitude, longitude: chokepoint.longitude });
+    }
+    return coords;
+  }, [chokepoints]);
+
   const arcs = useMemo<ArcData[]>(() => {
-    return computeArcsFromRoutes(routes, portCoords, highlightedRouteIds);
-  }, [routes, portCoords, highlightedRouteIds]);
+    return computeArcsFromRoutes(routes, portCoords, chokepointCoords, highlightedRouteIds);
+  }, [routes, portCoords, chokepointCoords, highlightedRouteIds]);
 
   const backgroundArcs = useMemo(() => arcs.filter(a => !a.animated), [arcs]);
   const affectedArcs = useMemo(() => arcs.filter(a => a.animated), [arcs]);
@@ -205,6 +213,7 @@ function Globe({
     return backgroundArcs.map(arc => ({
       geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], ARC_HEIGHT, 32),
       routeId: arc.routeId,
+      segmentId: arc.segmentId,
     }));
   }, [backgroundArcs]);
 
@@ -212,6 +221,7 @@ function Globe({
     return affectedArcs.map(arc => ({
       geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], ARC_HEIGHT, 32),
       routeId: arc.routeId,
+      segmentId: arc.segmentId,
     }));
   }, [affectedArcs]);
 
@@ -338,15 +348,15 @@ function Globe({
           </lineSegments>
         )}
 
-        {backgroundArcGeos.map(({ geo, routeId }) => (
-          <lineSegments key={`bg-${routeId}`} geometry={geo}>
+        {backgroundArcGeos.map(({ geo, segmentId }) => (
+          <lineSegments key={`bg-${segmentId}`} geometry={geo}>
             <lineBasicMaterial color="#ffffff" transparent opacity={0.08} />
           </lineSegments>
         ))}
 
-        {affectedArcGeos.map(({ geo, routeId }) => {
+        {affectedArcGeos.map(({ geo, segmentId }) => {
           return (
-            <lineSegments key={routeId} geometry={geo}>
+            <lineSegments key={segmentId} geometry={geo}>
               <lineDashedMaterial
                 color="#3b82f6"
                 dashSize={0.11}
@@ -420,7 +430,8 @@ export default function SideGlobe({
   const [ports, setPorts] = useState<SpatialPort[]>([]);
   const [chokepoints, setChokepoints] = useState<SpatialChokepoint[]>([]);
   const [routes, setRoutes] = useState<SpatialRoute[]>([]);
-  const [dataLoaded, setDataLoaded] = useState(false);
+  const [spatialStatus, setSpatialStatus] = useState<"loading" | "ready">("loading");
+  const [showWakeNotice, setShowWakeNotice] = useState(false);
   const [canvasReady, setCanvasReady] = useState(false);
   const readyNotified = useRef(false);
 
@@ -437,25 +448,69 @@ export default function SideGlobe({
   }, []);
 
   useEffect(() => {
-    fetchSpatialData()
-      .then(() => {
+    if (spatialStatus !== "loading") return;
+    const timer = window.setTimeout(() => setShowWakeNotice(true), 2000);
+    return () => window.clearTimeout(timer);
+  }, [spatialStatus]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const retryDelays = [0, 5000, 15000, 30000];
+
+    const loadSpatialData = async (attempt: number) => {
+      if (retryDelays[attempt] > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, retryDelays[attempt]));
+      }
+      if (cancelled) return;
+
+      try {
+        await fetchSpatialData();
+        if (cancelled) return;
         setPorts(getAllPorts());
         setChokepoints(getAllChokepoints());
         setRoutes(getAllRoutes());
-        setDataLoaded(true);
-      })
-      .catch((err) => console.error("Failed to load spatial data:", err));
+        setSpatialStatus("ready");
+        setShowWakeNotice(false);
+      } catch (err) {
+        if (cancelled) return;
+        console.warn("Spatial data is not ready yet; retrying:", err);
+        setShowWakeNotice(true);
+        void loadSpatialData(Math.min(attempt + 1, retryDelays.length - 1));
+      }
+    };
+
+    void loadSpatialData(0);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (dataLoaded && canvasReady && !readyNotified.current) {
+    if (canvasReady && !readyNotified.current) {
       readyNotified.current = true;
       onReady?.();
     }
-  }, [dataLoaded, canvasReady, onReady]);
+  }, [canvasReady, onReady]);
 
   return (
     <div className="absolute inset-0" style={{ clipPath: "inset(0 0 0 0%)", pointerEvents: "auto" }}>
+      {showWakeNotice && (
+        <div
+          role="status"
+          className="fixed left-6 bottom-6 z-[100] max-w-[340px] rounded-md px-4 py-3 text-xs leading-relaxed shadow-2xl"
+          style={{
+            backgroundColor: "rgba(8, 12, 18, 0.94)",
+            border: "1px solid rgba(34, 211, 238, 0.28)",
+            color: "rgba(255, 255, 255, 0.92)",
+            fontFamily: "var(--font-outfit), system-ui, sans-serif",
+            backdropFilter: "blur(10px)",
+            whiteSpace: "normal",
+            overflowWrap: "break-word",
+          }}
+        >
+          Server is waking up. Map data will appear shortly.
+        </div>
+      )}
       <Canvas
         camera={{ position: [-1, 0, 12], fov: 45 }}
         dpr={dpr}
@@ -471,20 +526,18 @@ export default function SideGlobe({
         style={{ background: "transparent" }}
       >
         <color attach="background" args={["#000000"]} />
-        {dataLoaded && (
-          <Globe
-            countries={countries}
-            ports={ports}
-            chokepoints={chokepoints}
-            routes={routes}
-            highlightedEntities={highlightedEntities}
-            highlightedRouteIds={highlightedRouteIds}
-            autoRotate={autoRotate}
-            onPinClick={onPinClick}
-            selectedPinId={selectedPinId}
-            showOnlyChokepoints={showOnlyChokepoints}
-          />
-        )}
+        <Globe
+          countries={countries}
+          ports={ports}
+          chokepoints={chokepoints}
+          routes={routes}
+          highlightedEntities={highlightedEntities}
+          highlightedRouteIds={highlightedRouteIds}
+          autoRotate={autoRotate}
+          onPinClick={onPinClick}
+          selectedPinId={selectedPinId}
+          showOnlyChokepoints={showOnlyChokepoints}
+        />
       </Canvas>
     </div>
   );

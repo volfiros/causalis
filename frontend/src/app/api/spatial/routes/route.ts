@@ -1,8 +1,9 @@
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+const BACKEND_TIMEOUT_MS = 45000;
 
 export async function GET() {
   try {
-    const res = await fetch(`${BACKEND_URL}/v1/spatial/routes`, { signal: AbortSignal.timeout(15000) });
+    const res = await fetch(`${BACKEND_URL}/v1/spatial/routes`, { signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS) });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       console.error(`[api/spatial/routes] Backend returned ${res.status}: ${text.slice(0, 200)}`);
