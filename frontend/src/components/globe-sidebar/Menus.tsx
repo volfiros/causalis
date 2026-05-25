@@ -297,21 +297,18 @@ export function Menus({
             </div>
           ) : (
             relevantPorts.map((port) => (
-              <button
+              <div
                 key={port.id}
-                onClick={() => onEntitySelect?.(port.id)}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "10px 12px",
-                  backgroundColor: selectedEntityId === port.id
-                    ? "rgba(34, 211, 238, 0.15)"
-                    : "rgba(255, 255, 255, 0.03)",
+                  backgroundColor: "rgba(255, 255, 255, 0.03)",
                   border: "none",
-                  borderLeft: selectedEntityId === port.id ? "2px solid #22d3ee" : "2px solid transparent",
+                  borderLeft: "2px solid transparent",
                   borderRadius: "0 6px 6px 0",
-                  cursor: "pointer",
+                  cursor: "default",
                   textAlign: "left",
                   transition: "all 150ms ease",
                 }}
@@ -321,7 +318,7 @@ export function Menus({
                     style={{
                       fontFamily: "var(--font-outfit), system-ui, sans-serif",
                       fontSize: "13px",
-                      color: selectedEntityId === port.id ? "#ffffff" : "rgba(255, 255, 255, 0.8)",
+                      color: "rgba(255, 255, 255, 0.8)",
                     }}
                   >
                     {port.name}
@@ -349,7 +346,7 @@ export function Menus({
                 >
                   {port.type}
                 </span>
-              </button>
+              </div>
             ))
           )}
         </div>
@@ -369,34 +366,37 @@ export function Menus({
               No entities
             </div>
           ) : (
-            entityInfos.map((entity) => (
-              <button
-                key={entity.id}
-                onClick={() => onEntitySelect?.(entity.id)}
-                style={{
-                  padding: "6px 10px",
-                  backgroundColor: selectedEntityId === entity.id
-                    ? entity.type === "port"
-                      ? "rgba(34, 211, 238, 0.2)"
-                      : "rgba(168, 85, 247, 0.2)"
-                    : "rgba(255, 255, 255, 0.05)",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: "pointer",
-                  transition: "all 150ms ease",
-                }}
-              >
-                <span
+            entityInfos.map((entity) => {
+              const isChokepoint = entity.type === "chokepoint";
+              const Component = isChokepoint ? "button" : "span";
+
+              return (
+                <Component
+                  key={entity.id}
+                  onClick={isChokepoint ? () => onEntitySelect?.(entity.id) : undefined}
                   style={{
-                    fontFamily: "var(--font-outfit), system-ui, sans-serif",
-                    fontSize: "12px",
-                    color: entity.type === "port" ? "#22d3ee" : "#a855f7",
+                    padding: "6px 10px",
+                    backgroundColor: selectedEntityId === entity.id && isChokepoint
+                      ? "rgba(168, 85, 247, 0.2)"
+                      : "rgba(255, 255, 255, 0.05)",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: isChokepoint ? "pointer" : "default",
+                    transition: "all 150ms ease",
                   }}
                 >
-                  {entity.name}
-                </span>
-              </button>
-            ))
+                  <span
+                    style={{
+                      fontFamily: "var(--font-outfit), system-ui, sans-serif",
+                      fontSize: "12px",
+                      color: entity.type === "port" ? "#22d3ee" : "#a855f7",
+                    }}
+                  >
+                    {entity.name}
+                  </span>
+                </Component>
+              );
+            })
           )}
         </div>
       </MenuSection>

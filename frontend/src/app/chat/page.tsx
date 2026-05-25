@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState, useMemo, Component, type ErrorInfo, type ReactNode } from "react";
 import { useChat } from "@ai-sdk/react";
 import { TextStreamChatTransport } from "ai";
-import { Send } from "lucide-react";
+import { Plus, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Renderer, type Library } from "@openuidev/react-lang";
 import { library, SimulationDataProvider } from "@/lib/openui-library";
@@ -213,6 +213,7 @@ function ChatPanel({
   messagesEndRef,
   isSidebarOpen,
   onToggleSidebar,
+  onNewChat,
   hasGlobe,
   globeVersion,
   simulationData,
@@ -228,6 +229,7 @@ function ChatPanel({
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
+  onNewChat: () => void;
   hasGlobe: boolean;
   globeVersion: number;
   simulationData: SimulationData | null;
@@ -243,15 +245,50 @@ function ChatPanel({
         className="px-12 lg:px-20 py-5 flex items-center justify-between"
         style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}
       >
-        <p
-          className="text-xs font-medium tracking-[0.2em] uppercase"
-          style={{
-            fontFamily: "var(--font-mono), ui-monospace, monospace",
-            color: "rgba(255, 255, 255, 0.3)",
-          }}
-        >
-          Causalis
-        </p>
+        <div className="flex items-center gap-4">
+          <p
+            className="text-xs font-medium tracking-[0.2em] uppercase"
+            style={{
+              fontFamily: "var(--font-mono), ui-monospace, monospace",
+              color: "rgba(255, 255, 255, 0.3)",
+            }}
+          >
+            Causalis
+          </p>
+          <div
+            aria-hidden="true"
+            className="h-5 w-px"
+            style={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+          />
+          <button
+            type="button"
+            onClick={onNewChat}
+            className="flex items-center gap-2 text-[11px] font-semibold tracking-[0.12em] uppercase transition-all duration-200"
+            style={{
+              fontFamily: "var(--font-mono), ui-monospace, monospace",
+              padding: "7px 10px",
+              backgroundColor: "rgba(255, 255, 255, 0.035)",
+              border: "1px solid rgba(255, 255, 255, 0.09)",
+              borderRadius: "6px",
+              color: "rgba(255, 255, 255, 0.62)",
+              boxShadow: "none",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(34, 211, 238, 0.1)";
+              e.currentTarget.style.borderColor = "rgba(34, 211, 238, 0.34)";
+              e.currentTarget.style.color = "#22d3ee";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.035)";
+              e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.09)";
+              e.currentTarget.style.color = "rgba(255, 255, 255, 0.62)";
+            }}
+            aria-label="Start a new chat"
+          >
+            <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
+            New Chat
+          </button>
+        </div>
         <div className="flex items-center gap-4">
           <p
             className="text-[11px] tracking-[0.15em] uppercase"
@@ -507,7 +544,7 @@ function ChatPanel({
 }
 
 function ChatContent() {
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, setMessages, sendMessage, stop, clearError, status, error } = useChat({
     transport: new TextStreamChatTransport({ api: "/api/chat/stream" }),
     onError: (err) => { console.error("[ChatContent] useChat error:", err); },
     onFinish: (msg) => { console.log("[ChatContent] useChat onFinish:", { role: msg.message?.role, contentLen: getMessageText(msg.message)?.length }); },
@@ -582,6 +619,18 @@ function ChatContent() {
     await sendMessage({ text: nextInput });
   };
 
+  const handleNewChat = () => {
+    stop();
+    clearError();
+    setMessages([]);
+    setInput("");
+    if (inputRef.current) inputRef.current.value = "";
+    setGlobeState(null);
+    setIsSidebarOpen(false);
+    setSelectedPinId(null);
+    window.requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   const handleEntitySelect = (entityId: string) => {
     setSelectedPinId(entityId === selectedPinId ? null : entityId);
   };
@@ -627,8 +676,6 @@ function ChatContent() {
         ids.add(route.origin_port_id);
         ids.add(route.destination_port_id);
       });
-      simulationData.port_congestion.forEach((port) => ids.add(port.port_id));
-      simulationData.cascade.impact_timeline.slice(0, 12).forEach((entry) => ids.add(entry.port));
     }
     return Array.from(ids);
   }, [globeState?.entities, simulationData]);
@@ -650,9 +697,7 @@ function ChatContent() {
   }, [highlightedEntities]);
 
   const scenarioRouteIds = useMemo(() => {
-    const simulationRouteIds = simulationData?.affected_routes?.map((route) => route.id) ?? [];
-    const cascadeRouteIds = simulationData?.cascade.propagation_edges?.map((edge) => edge.route_id) ?? [];
-    return Array.from(new Set([...simulationRouteIds, ...cascadeRouteIds]));
+    return simulationData?.affected_routes?.map((route) => route.id) ?? [];
   }, [simulationData]);
 
   const selectedRouteIds = useMemo(() => {
@@ -673,9 +718,13 @@ function ChatContent() {
   }, [selectedPinId, routes, scenarioRouteIds]);
 
   const highlightedRouteIds = useMemo(() => {
-    if (selectedPinId) return selectedRouteIds;
     return scenarioRouteIds;
-  }, [scenarioRouteIds, selectedPinId, selectedRouteIds]);
+  }, [scenarioRouteIds]);
+
+  const activeRouteIds = useMemo(() => {
+    if (!selectedPinId) return [];
+    return selectedRouteIds;
+  }, [selectedPinId, selectedRouteIds]);
 
 
   return (
@@ -692,6 +741,7 @@ function ChatContent() {
         onClearFilters={handleClearFilters}
         highlightedEntities={highlightedEntities}
         highlightedRouteIds={highlightedRouteIds}
+        activeRouteIds={activeRouteIds}
         onPinClick={setSelectedPinId}
         simulationData={simulationData}
         simulationLoading={simulationLoading}
@@ -709,6 +759,7 @@ function ChatContent() {
         messagesEndRef={messagesEndRef}
         isSidebarOpen={isSidebarOpen}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onNewChat={handleNewChat}
         hasGlobe={globeState !== null}
         globeVersion={globeState?.version ?? 0}
         simulationData={simulationData}

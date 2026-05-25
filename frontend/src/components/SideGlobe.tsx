@@ -5,9 +5,11 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { Html, OrbitControls } from "@react-three/drei";
 import { fetchSpatialData, getAllPorts, getAllChokepoints, getAllRoutes, SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
-import { buildArcGeometry, ArcData, computeArcsFromRoutes } from "@/lib/arc-utils";
 import { emitGlobeEvent } from "@/lib/globe-events";
-import { GLOBE_RADIUS, latLng, PIN_ALTITUDE, DOT_ALTITUDE, LAND_ALTITUDE, ARC_HEIGHT } from "@/lib/globe-constants";
+import { GLOBE_RADIUS, latLng, PIN_ALTITUDE, DOT_ALTITUDE, LAND_ALTITUDE, ARC_MIN_ALTITUDE } from "@/lib/globe-constants";
+
+const PIN_CLICK_RADIUS = 0.075;
+const CHOKEPOINT_PRIORITY_CLICK_RADIUS = 0.14;
 
 interface GeoFeature {
   type: string;
@@ -42,6 +44,61 @@ interface PinData {
   type: "port" | "chokepoint";
 }
 
+interface RouteGeometry {
+  geo: THREE.BufferGeometry;
+  routeId: string;
+}
+
+type RouteCoord = { latitude: number; longitude: number };
+
+function buildRoutePathGeometry(points: RouteCoord[]): THREE.BufferGeometry {
+  const vectors = points.map((point) => latLng(point.latitude, point.longitude, ARC_MIN_ALTITUDE));
+  const curvePoints =
+    vectors.length === 3
+      ? new THREE.QuadraticBezierCurve3(vectors[0], vectors[1], vectors[2]).getPoints(72)
+      : new THREE.CatmullRomCurve3(vectors, false, "centripetal", 0.4).getPoints(
+          Math.max(32, (points.length - 1) * 32)
+        );
+  const positions = curvePoints.flatMap((point) => {
+    const p = point.clone().normalize().multiplyScalar(ARC_MIN_ALTITUDE);
+    return [p.x, p.y, p.z];
+  });
+
+  return new THREE.BufferGeometry().setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(positions, 3)
+  );
+}
+
+function RouteLine({ geometry, active }: { geometry: THREE.BufferGeometry; active: boolean }) {
+  const material = useMemo(() => {
+    if (active) {
+      return new THREE.LineBasicMaterial({
+        color: "#3b82f6",
+        transparent: true,
+        opacity: 0.92,
+      });
+    }
+
+    return new THREE.LineDashedMaterial({
+      color: "#94a3b8",
+      dashSize: 0.045,
+      gapSize: 0.095,
+      transparent: true,
+      opacity: 0.34,
+    });
+  }, [active]);
+
+  const line = useMemo(() => new THREE.Line(geometry, material), [geometry, material]);
+
+  useEffect(() => {
+    line.computeLineDistances();
+    return () => material.dispose();
+  }, [line, material]);
+
+  return <primitive object={line} />;
+}
+
 interface GlobeProps {
   countries: GeoFeature[];
   ports: SpatialPort[];
@@ -49,6 +106,7 @@ interface GlobeProps {
   routes: SpatialRoute[];
   highlightedEntities: string[];
   highlightedRouteIds: string[];
+  activeRouteIds: string[];
   autoRotate?: boolean;
   onPinClick?: (pinId: string | null) => void;
   selectedPinId?: string | null;
@@ -103,6 +161,7 @@ function PinMesh({
   pin,
   isSelected,
   isHovered,
+  isClickable,
   onClick,
   onPointerEnter,
   onPointerLeave,
@@ -110,6 +169,7 @@ function PinMesh({
   pin: PinData;
   isSelected: boolean;
   isHovered: boolean;
+  isClickable: boolean;
   onClick: () => void;
   onPointerEnter: () => void;
   onPointerLeave: () => void;
@@ -130,9 +190,9 @@ function PinMesh({
     <group position={pin.position}>
       <mesh
         ref={meshRef}
-        onClick={onClick}
-        onPointerEnter={onPointerEnter}
-        onPointerLeave={onPointerLeave}
+        onClick={isClickable ? onClick : undefined}
+        onPointerEnter={isClickable ? onPointerEnter : undefined}
+        onPointerLeave={isClickable ? onPointerLeave : undefined}
       >
         <sphereGeometry args={[0.03, 8, 8]} />
         <meshBasicMaterial color={pinColor} />
@@ -155,6 +215,7 @@ function Globe({
   routes,
   highlightedEntities,
   highlightedRouteIds,
+  activeRouteIds,
   autoRotate = false,
   onPinClick,
   selectedPinId,
@@ -208,28 +269,45 @@ function Globe({
     return routes.filter((route) => visibleRouteIds.has(route.id));
   }, [routes, highlightedRouteIds]);
 
-  const arcs = useMemo<ArcData[]>(() => {
-    return computeArcsFromRoutes(visibleRoutes, portCoords, chokepointCoords, highlightedRouteIds);
-  }, [visibleRoutes, portCoords, chokepointCoords, highlightedRouteIds]);
+  const scenarioChokepointIds = useMemo(() => {
+    return highlightedEntities.filter((id) => chokepointCoords.has(id));
+  }, [highlightedEntities, chokepointCoords]);
 
-  const backgroundArcs = useMemo(() => arcs.filter(a => !a.animated), [arcs]);
-  const affectedArcs = useMemo(() => arcs.filter(a => a.animated), [arcs]);
+  const routeGeometries = useMemo(() => {
+    const activeRouteIdSet = new Set(activeRouteIds);
 
-  const backgroundArcGeos = useMemo(() => {
-    return backgroundArcs.map(arc => ({
-      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], ARC_HEIGHT, 32),
-      routeId: arc.routeId,
-      segmentId: arc.segmentId,
-    }));
-  }, [backgroundArcs]);
+    return visibleRoutes.reduce<{ background: RouteGeometry[]; active: RouteGeometry[] }>(
+      (acc, route) => {
+        const origin = portCoords.get(route.origin_port_id);
+        const dest = portCoords.get(route.destination_port_id);
+        if (!origin || !dest) return acc;
 
-  const affectedArcGeos = useMemo(() => {
-    return affectedArcs.map(arc => ({
-      geo: buildArcGeometry([arc.startLat, arc.startLng], [arc.endLat, arc.endLng], ARC_HEIGHT, 32),
-      routeId: arc.routeId,
-      segmentId: arc.segmentId,
-    }));
-  }, [affectedArcs]);
+        const routeChokepointIds =
+          selectedPinId &&
+          chokepointCoords.has(selectedPinId) &&
+          route.chokepoints_transited.includes(selectedPinId)
+            ? [selectedPinId]
+            : route.chokepoints_transited.filter((id) => scenarioChokepointIds.includes(id));
+
+        const waypointCoords = routeChokepointIds
+          .map((id) => chokepointCoords.get(id))
+          .filter((coord): coord is RouteCoord => Boolean(coord));
+
+        const routeGeometry = {
+          geo: buildRoutePathGeometry([origin, ...waypointCoords, dest]),
+          routeId: route.id,
+        };
+
+        if (activeRouteIdSet.has(route.id)) {
+          acc.active.push(routeGeometry);
+        } else {
+          acc.background.push(routeGeometry);
+        }
+        return acc;
+      },
+      { background: [], active: [] }
+    );
+  }, [activeRouteIds, chokepointCoords, portCoords, scenarioChokepointIds, selectedPinId, visibleRoutes]);
 
   const allPins = useMemo<PinData[]>(() => {
     const pins: PinData[] = [];
@@ -262,6 +340,14 @@ function Globe({
     return allPins;
   }, [allPins, highlightedEntities, showOnlyChokepoints]);
 
+  const clickablePinIds = useMemo(() => {
+    if (scenarioChokepointIds.length > 0) return new Set(scenarioChokepointIds);
+    if (showOnlyChokepoints) {
+      return new Set(visiblePins.filter((pin) => pin.type === "chokepoint").map((pin) => pin.id));
+    }
+    return new Set<string>();
+  }, [scenarioChokepointIds, showOnlyChokepoints, visiblePins]);
+
   const glowPositions = useMemo(() => {
     return visiblePins.map(pin => pin.position);
   }, [visiblePins]);
@@ -287,16 +373,27 @@ function Globe({
     if (!globeGroup) return;
 
     const intersects = raycaster.intersectObjects(globeGroup.children, true);
-    const clickedPin = intersects.find(hit =>
+    const clickedClickablePin = visiblePins.find(pin =>
+      clickablePinIds.has(pin.id) &&
+      intersects.some(hit =>
+        Math.abs(hit.point.distanceTo(pin.position)) < CHOKEPOINT_PRIORITY_CLICK_RADIUS
+      )
+    );
+    const clickedVisiblePin = intersects.find(hit =>
       visiblePins.some(pin =>
-        Math.abs(hit.point.distanceTo(pin.position)) < 0.075
+        Math.abs(hit.point.distanceTo(pin.position)) < PIN_CLICK_RADIUS
       )
     );
 
-    if (!clickedPin) {
+    if (clickedClickablePin) {
+      handlePinClick(clickedClickablePin.id);
+      return;
+    }
+
+    if (!clickedClickablePin && !clickedVisiblePin) {
       onPinClick?.(null);
     }
-  }, [camera, gl, onPinClick, visiblePins]);
+  }, [camera, clickablePinIds, gl, handlePinClick, onPinClick, visiblePins]);
 
   useEffect(() => {
     gl.domElement.addEventListener("click", handleCanvasClick);
@@ -318,18 +415,6 @@ function Globe({
       }
       glowMeshes.current.instanceMatrix.needsUpdate = true;
     }
-  });
-
-  useFrame(() => {
-    if (!groupRef.current) return;
-    groupRef.current.traverse((child) => {
-      if (child instanceof THREE.LineSegments) {
-        const material = child.material;
-        if (material instanceof THREE.LineDashedMaterial) {
-          (material as THREE.LineDashedMaterial & { dashOffset: number }).dashOffset -= 0.01;
-        }
-      }
-    });
   });
 
   return (
@@ -354,25 +439,12 @@ function Globe({
           </lineSegments>
         )}
 
-        {backgroundArcGeos.map(({ geo, segmentId }) => (
-          <lineSegments key={`bg-${segmentId}`} geometry={geo}>
-            <lineBasicMaterial color="#ffffff" transparent opacity={0.08} />
-          </lineSegments>
+        {routeGeometries.background.map(({ geo, routeId }) => (
+          <RouteLine key={`bg-${routeId}`} geometry={geo} active={false} />
         ))}
 
-        {affectedArcGeos.map(({ geo, segmentId }) => {
-          return (
-            <lineSegments key={segmentId} geometry={geo} onUpdate={(line) => line.computeLineDistances()}>
-              <lineDashedMaterial
-                color="#3b82f6"
-                dashSize={0.06}
-                gapSize={0.08}
-                linewidth={2}
-                transparent
-                opacity={0.8}
-              />
-            </lineSegments>
-          );
+        {routeGeometries.active.map(({ geo, routeId }) => {
+          return <RouteLine key={routeId} geometry={geo} active />;
         })}
 
         {visiblePins.map((pin) => (
@@ -381,6 +453,7 @@ function Globe({
             pin={pin}
             isSelected={selectedPinId === pin.id}
             isHovered={hoveredPinId === pin.id}
+            isClickable={clickablePinIds.has(pin.id)}
             onClick={() => handlePinClick(pin.id)}
             onPointerEnter={() => setHoveredPinId(pin.id)}
             onPointerLeave={() => setHoveredPinId(null)}
@@ -414,6 +487,7 @@ function Globe({
 export interface SideGlobeProps {
   highlightedEntities?: string[];
   highlightedRouteIds?: string[];
+  activeRouteIds?: string[];
   autoRotate?: boolean;
   onPinClick?: (pinId: string | null) => void;
   selectedPinId?: string | null;
@@ -425,6 +499,7 @@ export interface SideGlobeProps {
 export default function SideGlobe({
   highlightedEntities = [],
   highlightedRouteIds = [],
+  activeRouteIds = [],
   autoRotate = false,
   onPinClick,
   selectedPinId,
@@ -539,6 +614,7 @@ export default function SideGlobe({
           routes={routes}
           highlightedEntities={highlightedEntities}
           highlightedRouteIds={highlightedRouteIds}
+          activeRouteIds={activeRouteIds}
           autoRotate={autoRotate}
           onPinClick={onPinClick}
           selectedPinId={selectedPinId}

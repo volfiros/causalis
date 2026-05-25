@@ -31,6 +31,7 @@ interface GlobeSidebarProps {
   onClearFilters?: () => void;
   highlightedEntities?: string[];
   highlightedRouteIds?: string[];
+  activeRouteIds?: string[];
   onPinClick?: (pinId: string | null) => void;
   simulationData?: SimulationData | null;
   simulationLoading?: boolean;
@@ -116,6 +117,7 @@ export function GlobeSidebar({
   onClearFilters,
   highlightedEntities = [],
   highlightedRouteIds = [],
+  activeRouteIds = [],
   onPinClick,
   simulationData,
   simulationLoading,
@@ -163,6 +165,7 @@ export function GlobeSidebar({
         <SideGlobe
           highlightedEntities={highlightedEntities}
           highlightedRouteIds={highlightedRouteIds}
+          activeRouteIds={activeRouteIds}
           selectedPinId={selectedEntityId}
           onPinClick={onPinClick}
           dpr={1.5}
