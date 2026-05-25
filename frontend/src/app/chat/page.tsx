@@ -558,18 +558,6 @@ function ChatContent() {
     return unsubscribe;
   }, []);
 
-  const selectedRouteIds = useMemo(() => {
-    if (!selectedPinId) return [];
-    return routes
-      .filter(
-        (r) =>
-          r.chokepoints_transited.includes(selectedPinId) ||
-          r.origin_port_id === selectedPinId ||
-          r.destination_port_id === selectedPinId
-      )
-      .map((r) => r.id);
-  }, [selectedPinId, routes]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -661,11 +649,33 @@ function ChatContent() {
     return infos;
   }, [highlightedEntities]);
 
-  const highlightedRouteIds = useMemo(() => {
+  const scenarioRouteIds = useMemo(() => {
     const simulationRouteIds = simulationData?.affected_routes?.map((route) => route.id) ?? [];
     const cascadeRouteIds = simulationData?.cascade.propagation_edges?.map((edge) => edge.route_id) ?? [];
-    return Array.from(new Set([...simulationRouteIds, ...cascadeRouteIds, ...selectedRouteIds]));
-  }, [simulationData, selectedRouteIds]);
+    return Array.from(new Set([...simulationRouteIds, ...cascadeRouteIds]));
+  }, [simulationData]);
+
+  const selectedRouteIds = useMemo(() => {
+    if (!selectedPinId) return [];
+
+    const scenarioRouteIdSet = new Set(scenarioRouteIds);
+    const hasScenarioRoutes = scenarioRouteIdSet.size > 0;
+
+    return routes
+      .filter(
+        (r) =>
+          r.chokepoints_transited.includes(selectedPinId) ||
+          r.origin_port_id === selectedPinId ||
+          r.destination_port_id === selectedPinId
+      )
+      .filter((r) => !hasScenarioRoutes || scenarioRouteIdSet.has(r.id))
+      .map((r) => r.id);
+  }, [selectedPinId, routes, scenarioRouteIds]);
+
+  const highlightedRouteIds = useMemo(() => {
+    if (selectedPinId) return selectedRouteIds;
+    return scenarioRouteIds;
+  }, [scenarioRouteIds, selectedPinId, selectedRouteIds]);
 
 
   return (
@@ -679,7 +689,6 @@ function ChatContent() {
         onEntitySelect={handleEntitySelect}
         ports={ports}
         chokepoints={chokepoints}
-        routes={routes}
         onClearFilters={handleClearFilters}
         highlightedEntities={highlightedEntities}
         highlightedRouteIds={highlightedRouteIds}

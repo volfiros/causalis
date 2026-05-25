@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
-import { SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
+import { SpatialPort, SpatialChokepoint } from "@/lib/spatial-data";
 import { SimulationData } from "@/lib/use-simulation";
 import { EntityInfo } from "./index";
 
@@ -92,7 +92,6 @@ interface MenusProps {
   entityInfos: EntityInfo[];
   ports: SpatialPort[];
   chokepoints: SpatialChokepoint[];
-  routes: SpatialRoute[];
   selectedEntityId?: string | null;
   onEntitySelect?: (entityId: string) => void;
   simulationData?: SimulationData | null;
@@ -102,7 +101,6 @@ export function Menus({
   entityInfos,
   ports,
   chokepoints,
-  routes,
   selectedEntityId,
   onEntitySelect,
   simulationData,
@@ -204,7 +202,7 @@ export function Menus({
                 color: "#3b82f6",
               }}
             >
-              {simulationData?.affected_routes?.length ?? routes.length}
+              {simulationData?.affected_routes?.length ?? 0}
             </span>
           </div>
         </div>

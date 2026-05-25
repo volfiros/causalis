@@ -50,7 +50,7 @@ interface GlobeProps {
   highlightedEntities: string[];
   highlightedRouteIds: string[];
   autoRotate?: boolean;
-  onPinClick?: (pinId: string) => void;
+  onPinClick?: (pinId: string | null) => void;
   selectedPinId?: string | null;
   showOnlyChokepoints?: boolean;
 }
@@ -202,9 +202,15 @@ function Globe({
     return coords;
   }, [chokepoints]);
 
+  const visibleRoutes = useMemo(() => {
+    if (highlightedRouteIds.length === 0) return [];
+    const visibleRouteIds = new Set(highlightedRouteIds);
+    return routes.filter((route) => visibleRouteIds.has(route.id));
+  }, [routes, highlightedRouteIds]);
+
   const arcs = useMemo<ArcData[]>(() => {
-    return computeArcsFromRoutes(routes, portCoords, chokepointCoords, highlightedRouteIds);
-  }, [routes, portCoords, chokepointCoords, highlightedRouteIds]);
+    return computeArcsFromRoutes(visibleRoutes, portCoords, chokepointCoords, highlightedRouteIds);
+  }, [visibleRoutes, portCoords, chokepointCoords, highlightedRouteIds]);
 
   const backgroundArcs = useMemo(() => arcs.filter(a => !a.animated), [arcs]);
   const affectedArcs = useMemo(() => arcs.filter(a => a.animated), [arcs]);
@@ -288,7 +294,7 @@ function Globe({
     );
 
     if (!clickedPin) {
-      onPinClick?.(null as unknown as string);
+      onPinClick?.(null);
     }
   }, [camera, gl, onPinClick, visiblePins]);
 
@@ -356,11 +362,11 @@ function Globe({
 
         {affectedArcGeos.map(({ geo, segmentId }) => {
           return (
-            <lineSegments key={segmentId} geometry={geo}>
+            <lineSegments key={segmentId} geometry={geo} onUpdate={(line) => line.computeLineDistances()}>
               <lineDashedMaterial
                 color="#3b82f6"
-                dashSize={0.11}
-                gapSize={0.06}
+                dashSize={0.06}
+                gapSize={0.08}
                 linewidth={2}
                 transparent
                 opacity={0.8}
@@ -409,7 +415,7 @@ export interface SideGlobeProps {
   highlightedEntities?: string[];
   highlightedRouteIds?: string[];
   autoRotate?: boolean;
-  onPinClick?: (pinId: string) => void;
+  onPinClick?: (pinId: string | null) => void;
   selectedPinId?: string | null;
   dpr?: number;
   showOnlyChokepoints?: boolean;

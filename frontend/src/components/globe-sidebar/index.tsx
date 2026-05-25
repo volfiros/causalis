@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { GlobeEventPayload } from "@/lib/globe-events";
-import { SpatialPort, SpatialChokepoint, SpatialRoute } from "@/lib/spatial-data";
+import { SpatialPort, SpatialChokepoint } from "@/lib/spatial-data";
 import { SimulationData } from "@/lib/use-simulation";
 import SideGlobe from "@/components/SideGlobe";
 import { ImpactStatsCard } from "./ImpactStatsCard";
@@ -28,7 +28,6 @@ interface GlobeSidebarProps {
   onEntitySelect?: (entityId: string) => void;
   ports: SpatialPort[];
   chokepoints: SpatialChokepoint[];
-  routes: SpatialRoute[];
   onClearFilters?: () => void;
   highlightedEntities?: string[];
   highlightedRouteIds?: string[];
@@ -114,7 +113,6 @@ export function GlobeSidebar({
   onEntitySelect,
   ports,
   chokepoints,
-  routes,
   onClearFilters,
   highlightedEntities = [],
   highlightedRouteIds = [],
@@ -230,7 +228,6 @@ export function GlobeSidebar({
             entityInfos={entityInfos}
             ports={ports}
             chokepoints={chokepoints}
-            routes={routes}
             selectedEntityId={selectedEntityId}
             onEntitySelect={onEntitySelect}
             simulationData={simulationData}
